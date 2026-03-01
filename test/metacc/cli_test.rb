@@ -392,6 +392,7 @@ class CLITest < Minitest::Test
     out, = capture_io do
       assert_raises(SystemExit) { MetaCC::CLI.new(driver: stub).run(["--version"]) }
     end
+
     assert_includes out, stub.toolchain.version_banner
   end
 

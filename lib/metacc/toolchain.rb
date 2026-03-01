@@ -26,7 +26,7 @@ module MetaCC
     # The default implementation returns [:c, :cxx].  Subclasses that only
     # support a subset of languages should override this method.
     def languages
-      [:c, :cxx]
+      %i[c cxx]
     end
 
     # Returns true if +command+ is present in PATH, false otherwise.
@@ -44,14 +44,14 @@ module MetaCC
 
     # Returns a Hash mapping universal flags to native flags for this toolchain.
     def flags
-      raise RuntimeError, "#{self.class}#flags not implemented"
+      raise "#{self.class}#flags not implemented"
     end
 
     # Returns the full command array for the given inputs, output, and flags.
     # The output mode (object files, shared library, static library, or
     # executable) is determined by the translated flags.
-    def command(input_files, output, flags, include_paths, definitions, libs, linker_include_dirs)
-      raise RuntimeError, "#{self.class}#command not implemented"
+    def command(_input_files, _output, _flags, _include_paths, _definitions, _libs, _linker_include_dirs)
+      raise "#{self.class}#command not implemented"
     end
 
     # Returns the default file extension (with leading dot, e.g. ".o") for the
@@ -104,7 +104,7 @@ module MetaCC
 
     def initialize(search_paths: [])
       super
-      @c    = resolve_command("gcc")
+      @c = resolve_command("gcc")
     end
 
     def command(input_files, output, flags, include_paths, definitions, libs, linker_include_dirs)
@@ -118,32 +118,32 @@ module MetaCC
     end
 
     GNU_FLAGS = {
-      o0:            ["-O0"],
-      o1:            ["-O1"],
-      o2:            ["-O2"],
-      o3:            ["-O3"],
-      os:            ["-Os"],
-      sse4_2:        ["-march=x86-64-v2"], # This is a better match for /arch:SSE4.2 than -msse4_2 is
-      avx:           ["-march=x86-64-v2", "-mavx"],
-      avx2:          ["-march=x86-64-v3"], # This is a better match for /arch:AVX2 than -mavx2 is
-      avx512:        ["-march=x86-64-v4"],
-      native:        ["-march=native", "-mtune=native"],
-      debug:         ["-g3"],
-      lto:           ["-flto"],
-      warn_all:      ["-Wall", "-Wextra", "-pedantic"],
-      warn_error:    ["-Werror"],
-      c11:           ["-std=c11"],
-      c17:           ["-std=c17"],
-      c23:           ["-std=c23"],
-      cxx11:         ["-std=c++11"],
-      cxx14:         ["-std=c++14"],
-      cxx17:         ["-std=c++17"],
-      cxx20:         ["-std=c++20"],
-      cxx23:         ["-std=c++23"],
-      cxx26:         ["-std=c++2c"],
-      asan:          ["-fsanitize=address"],
-      ubsan:         ["-fsanitize=undefined"],
-      msan:          ["-fsanitize=memory"],
+      o0:                        ["-O0"],
+      o1:                        ["-O1"],
+      o2:                        ["-O2"],
+      o3:                        ["-O3"],
+      os:                        ["-Os"],
+      sse4_2:                    ["-march=x86-64-v2"], # This is a better match for /arch:SSE4.2 than -msse4_2 is
+      avx:                       ["-march=x86-64-v2", "-mavx"],
+      avx2:                      ["-march=x86-64-v3"], # This is a better match for /arch:AVX2 than -mavx2 is
+      avx512:                    ["-march=x86-64-v4"],
+      native:                    ["-march=native", "-mtune=native"],
+      debug:                     ["-g3"],
+      lto:                       ["-flto"],
+      warn_all:                  ["-Wall", "-Wextra", "-pedantic"],
+      warn_error:                ["-Werror"],
+      c11:                       ["-std=c11"],
+      c17:                       ["-std=c17"],
+      c23:                       ["-std=c23"],
+      cxx11:                     ["-std=c++11"],
+      cxx14:                     ["-std=c++14"],
+      cxx17:                     ["-std=c++17"],
+      cxx20:                     ["-std=c++20"],
+      cxx23:                     ["-std=c++23"],
+      cxx26:                     ["-std=c++2c"],
+      asan:                      ["-fsanitize=address"],
+      ubsan:                     ["-fsanitize=undefined"],
+      msan:                      ["-fsanitize=memory"],
       no_rtti:                   ["-fno-rtti"],
       no_exceptions:             ["-fno-exceptions", "-fno-unwind-tables"],
       pic:                       ["-fPIC"],
@@ -167,7 +167,7 @@ module MetaCC
 
     def initialize(search_paths: [])
       super
-      @c    = resolve_command("clang")
+      @c = resolve_command("clang")
     end
 
     CLANG_FLAGS = GNU_FLAGS.merge(lto: ["-flto=thin"]).freeze
@@ -190,7 +190,7 @@ module MetaCC
     def initialize(cl_command = "cl", search_paths: [])
       super(search_paths:)
       resolved_cmd = resolve_command(cl_command)
-      @c    = resolved_cmd
+      @c = resolved_cmd
       setup_msvc_environment(resolved_cmd)
     end
 
@@ -380,7 +380,7 @@ module MetaCC
 
     def initialize(search_paths: [])
       super
-      @c   = resolve_command("tcc")
+      @c = resolve_command("tcc")
     end
 
     # TinyCC does not support C++.

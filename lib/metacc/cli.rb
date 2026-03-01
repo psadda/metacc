@@ -69,9 +69,9 @@ module MetaCC
     }.freeze
 
     STANDARDS = {
-      "c11"   => :c11,
-      "c17"   => :c17,
-      "c23"   => :c23,
+      "c11" =>   :c11,
+      "c17" =>   :c17,
+      "c23" =>   :c23,
       "c++11" => :cxx11,
       "c++14" => :cxx14,
       "c++17" => :cxx17,
@@ -82,9 +82,9 @@ module MetaCC
 
     # Maps --x<name> CLI option names to xflags toolchain-class keys.
     XFLAGS = {
-      "xmsvc" =>    MSVC,
-      "xgnu" =>     GNU,
-      "xclang" =>   Clang,
+      "xmsvc" => MSVC,
+      "xgnu" => GNU,
+      "xclang" => Clang,
       "xclangcl" => ClangCL
     }.freeze
 
@@ -105,13 +105,13 @@ module MetaCC
     def parse_compile_args(argv)
       options = {
         include_paths: [],
-        defs: [],
-        linker_paths: [],
-        libs: [],
-        output_path: nil,
-        run: false,
-        flags: [],
-        xflags: {},
+        defs:          [],
+        linker_paths:  [],
+        libs:          [],
+        output_path:   nil,
+        run:           false,
+        flags:         [],
+        xflags:        {}
       }
       parser = OptionParser.new
       setup_compile_options(parser, options)
@@ -131,22 +131,19 @@ module MetaCC
       parser.on("-D DEF", "Add a preprocessor definition") do |value|
         options[:defs] << value
       end
-      parser.on("-O LEVEL", /\A[0-3]\z/, "Optimization level (0–3)") do |level|
+      parser.on("-O LEVEL", /\A[0-3]|s\z/, "Optimization level (0–3)") do |_level|
         options[:flags] << :"o#{l}"
       end
-      parser.on("-Os", "Optimize for size") do
-        options[:flags] << :os
-      end
-      parser.on("-m", "--arch ARCH", "Target architecture") do |value|
+      parser.on("-m", "--arch ARCH", "Target architecture") do |_value|
         options[:flags] << TARGETS[v]
       end
       parser.on("-g", "--debug", "Emit debugging symbols") do
         options[:flags] << :debug
       end
-      parser.on("--std STANDARD", "Specify the language standard") do |value|
+      parser.on("--std STANDARD", "Specify the language standard") do |_value|
         options[:flags] << STANDARDS[v]
       end
-      parser.on("-W OPTION", "Configure warnings") do |value|
+      parser.on("-W OPTION", "Configure warnings") do |_value|
         options[:flags] << WARNING_CONFIGS[v]
       end
       parser.on("-c", "--objects", "Produce object files") do
@@ -200,10 +197,10 @@ module MetaCC
         exit 1
       end
 
-      if run_flag && (objects || flags.include?(:shared) || flags.include?(:static))
-        warn "error: --run cannot be used with --objects, --shared, or --static"
-        exit 1
-      end
+      return unless run_flag && (objects || flags.include?(:shared) || flags.include?(:static))
+
+      warn "error: --run cannot be used with --objects, --shared, or --static"
+      exit 1
     end
 
     def run_executable(path)

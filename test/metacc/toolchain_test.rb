@@ -428,7 +428,7 @@ class ToolchainLanguagesTest < Minitest::Test
       def command_available?(_cmd) = true
     end.new
 
-    assert_equal [:c, :cxx], tc.languages
+    assert_equal %i[c cxx], tc.languages
   end
 
   def test_clang_toolchain_supports_c_and_cxx
@@ -436,7 +436,7 @@ class ToolchainLanguagesTest < Minitest::Test
       def command_available?(_cmd) = true
     end.new
 
-    assert_equal [:c, :cxx], tc.languages
+    assert_equal %i[c cxx], tc.languages
   end
 
   def test_msvc_toolchain_supports_c_and_cxx
@@ -446,7 +446,7 @@ class ToolchainLanguagesTest < Minitest::Test
       def run_vcvarsall(*) = nil
     end.new
 
-    assert_equal [:c, :cxx], tc.languages
+    assert_equal %i[c cxx], tc.languages
   end
 
   def test_clang_cl_toolchain_supports_c_and_cxx
@@ -456,7 +456,7 @@ class ToolchainLanguagesTest < Minitest::Test
       def run_vcvarsall(*) = nil
     end.new
 
-    assert_equal [:c, :cxx], tc.languages
+    assert_equal %i[c cxx], tc.languages
   end
 
   # ---------------------------------------------------------------------------
@@ -583,7 +583,7 @@ class ToolchainDefaultExtensionTest < Minitest::Test
     host_os = RbConfig::CONFIG["host_os"]
     expected =
       if host_os.match?(/mswin|mingw|cygwin/) then ".dll"
-      elsif host_os.match?(/darwin/)           then ".dylib"
+      elsif host_os.match?(/darwin/) then ".dylib"
       else ".so"
       end
 
