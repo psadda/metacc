@@ -152,7 +152,7 @@ module MetaCC
       no_strict_aliasing:        ["-fno-strict-aliasing"],
       objects:                   ["-c"],
       shared:                    ["-shared"],
-      static:                    ["-r", "-nostdlib"],
+      static:                    ["-static"],
       strip:                     ["-Wl,--strip-unneeded"]
     }.freeze
 
@@ -433,7 +433,7 @@ module MetaCC
       no_strict_aliasing:        [],
       objects:                   ["-c"],
       shared:                    ["-shared"],
-      static:                    ["-c"],
+      static:                    ["-c", "-static"],
       strip:                     []
     }.freeze
 
