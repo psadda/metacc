@@ -88,17 +88,21 @@ module MetaCC
       "xclangcl" => ClangCL
     }.freeze
 
-    def run(argv, driver: Driver.new)
-      options, input_paths = parse_compile_args(argv, driver:)
+    def initialize(driver: Driver.new)
+      @driver = driver
+    end
+
+    def run(argv)
+      options, input_paths = parse_compile_args(argv)
       output_path = options.delete(:output_path)
       run_flag = options.delete(:run)
       validate_options!(options[:flags], output_path, run_flag)
-      invoke(driver, input_paths, output_path, options, run: run_flag)
+      invoke(input_paths, output_path, options, run: run_flag)
     end
 
     # Parses compile arguments.
     # Returns [options_hash, remaining_positional_args].
-    def parse_compile_args(argv, driver: nil)
+    def parse_compile_args(argv)
       options = {
         include_paths: [],
         defs: [],
@@ -110,14 +114,14 @@ module MetaCC
         xflags: {},
       }
       parser = OptionParser.new
-      setup_compile_options(parser, options, driver:)
+      setup_compile_options(parser, options)
       sources = parser.permute(argv)
       [options, sources]
     end
 
     private
 
-    def setup_compile_options(parser, options, driver: nil)
+    def setup_compile_options(parser, options)
       parser.on("-o FILEPATH", "Output file path") do |value|
         options[:output_path] = value
       end
@@ -178,7 +182,7 @@ module MetaCC
         end
       end
       parser.on_tail("--version", "Print the toolchain version and exit") do
-        puts driver&.toolchain&.version_banner
+        puts @driver.toolchain&.version_banner
         exit
       end
     end
@@ -206,8 +210,8 @@ module MetaCC
       system(path)
     end
 
-    def invoke(driver, input_paths, output_path, options, run: false)
-      result = driver.invoke(input_paths, output_path, **options)
+    def invoke(input_paths, output_path, options, run: false)
+      result = @driver.invoke(input_paths, output_path, **options)
       exit 1 unless result
       run_executable(result) if run
     end
