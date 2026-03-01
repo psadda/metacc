@@ -61,7 +61,7 @@ class CLITest < Minitest::Test
   # can assert on what Driver#invoke received.
   def run_cli(argv)
     stub = StubDriver.new
-    MetaCC::CLI.new.run(argv, driver: stub)
+    MetaCC::CLI.new(driver: stub).run(argv)
     stub
   end
 
@@ -345,24 +345,24 @@ class CLITest < Minitest::Test
 
   def test_run_short_flag_executes_after_compilation
     stub = StubDriver.new
-    cli = SpyCLI.new
-    cli.run(["-r", "-o", "out", "main.c"], driver: stub)
+    cli = SpyCLI.new(driver: stub)
+    cli.run(["-r", "-o", "out", "main.c"])
 
     assert_equal "out", cli.executed_path
   end
 
   def test_run_long_flag_executes_after_compilation
     stub = StubDriver.new
-    cli = SpyCLI.new
-    cli.run(["--run", "-o", "out", "main.c"], driver: stub)
+    cli = SpyCLI.new(driver: stub)
+    cli.run(["--run", "-o", "out", "main.c"])
 
     assert_equal "out", cli.executed_path
   end
 
   def test_run_not_triggered_without_flag
     stub = StubDriver.new
-    cli = SpyCLI.new
-    cli.run(["-o", "out", "main.c"], driver: stub)
+    cli = SpyCLI.new(driver: stub)
+    cli.run(["-o", "out", "main.c"])
 
     assert_nil cli.executed_path
   end
@@ -384,13 +384,13 @@ class CLITest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_help_flag_exits
-    assert_raises(SystemExit) { MetaCC::CLI.new.run(["--help"], driver: StubDriver.new) }
+    assert_raises(SystemExit) { MetaCC::CLI.new(driver: StubDriver.new).run(["--help"]) }
   end
 
   def test_version_flag_prints_banner_and_exits
     stub = StubDriver.new
     out, = capture_io do
-      assert_raises(SystemExit) { MetaCC::CLI.new.run(["--version"], driver: stub) }
+      assert_raises(SystemExit) { MetaCC::CLI.new(driver: stub).run(["--version"]) }
     end
     assert_includes out, stub.toolchain.version_banner
   end
