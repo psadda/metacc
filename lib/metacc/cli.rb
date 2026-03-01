@@ -131,20 +131,20 @@ module MetaCC
       parser.on("-D DEF", "Add a preprocessor definition") do |value|
         options[:defs] << value
       end
-      parser.on("-O LEVEL", /\A[0-3]|s\z/, "Optimization level (0–3)") do |_level|
-        options[:flags] << :"o#{l}"
+      parser.on("-O LEVEL", /\A[0-3]|s\z/, "Optimization level (0–3)") do |level|
+        options[:flags] << :"o#{level}"
       end
-      parser.on("-m", "--arch ARCH", "Target architecture") do |_value|
-        options[:flags] << TARGETS[v]
+      parser.on("-m", "--arch ARCH", "Target architecture") do |value|
+        options[:flags] << TARGETS[value]
       end
       parser.on("-g", "--debug", "Emit debugging symbols") do
         options[:flags] << :debug
       end
-      parser.on("--std STANDARD", "Specify the language standard") do |_value|
-        options[:flags] << STANDARDS[v]
+      parser.on("--std STANDARD", "Specify the language standard") do |value|
+        options[:flags] << STANDARDS[value]
       end
-      parser.on("-W OPTION", "Configure warnings") do |_value|
-        options[:flags] << WARNING_CONFIGS[v]
+      parser.on("-W OPTION", "Configure warnings") do |value|
+        options[:flags] << WARNING_CONFIGS[value]
       end
       parser.on("-c", "--objects", "Produce object files") do
         options[:flags] << :objects
