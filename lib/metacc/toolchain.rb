@@ -249,8 +249,8 @@ module MetaCC
       def_flags = defs.map { |d| "/D#{d}" }
       lib_flags      = libs.map { |l| "#{l}.lib" }
       lib_path_flags = link_paths.map { |p| "/LIBPATH:#{p}" }
-      cmd = [c, *flags, *inc_flags, *def_flags, *input_files, *lib_flags, "/Fe#{output_file}"]
-      cmd << ["/link", *lib_path_flags] unless lib_path_flags.empty?
+      cmd = [c, *flags, *inc_flags, *def_flags, *input_files, *lib_flags, "/Fe", output_file]
+      cmd += ["/link", *lib_path_flags] unless lib_path_flags.empty?
       cmd
     end
 
@@ -328,70 +328,52 @@ module MetaCC
     def setup_msvc_environment(cl_command)
       return if command_available?(cl_command)
 
-      devenv_path = run_vswhere("-path", "-property", "productPath") ||
-                    run_vswhere("-latest", "-prerelease", "-property", "productPath")
+      devenv_path = MSVC.vswhere("-path", "-property", "productPath") ||
+                    MSVC.vswhere("-latest", "-prerelease", "-property", "productPath")
       return unless devenv_path
 
-      vcvarsall = find_vcvarsall(devenv_path)
-      return unless vcvarsall
-
-      run_vcvarsall(vcvarsall)
+      MSVC.vcvarsall(devenv_path)
     end
 
     # Runs vswhere.exe with the given arguments and returns the trimmed stdout,
     # or nil if vswhere.exe is absent, the command fails, or produces no output.
-    def run_vswhere(*args)
-      return nil unless File.exist?(VSWHERE_PATH)
-
-      stdout = IO.popen([VSWHERE_PATH, *args], &:read)
+    def self.vswhere(*args)
+      path = IO.popen([VSWHERE_PATH, *args], &:read).strip
       status = $?
-      return nil unless status.success?
 
-      path = stdout.strip
-      path.empty? ? nil : path
+      status.success? && !path.empty? ? path : nil
     rescue Errno::ENOENT
       nil
-    end
-
-    # Returns the path to vcvarsall.bat for the given devenv.exe path, or nil
-    # if it cannot be located.  devenv.exe lives at:
-    #   <root>\Common7\IDE\devenv.exe
-    # vcvarsall.bat lives at:
-    #   <root>\VC\Auxiliary\Build\vcvarsall.bat
-    def find_vcvarsall(devenv_path)
-      install_root = File.expand_path("../../..", devenv_path)
-      vcvarsall = File.join(install_root, "VC", "Auxiliary", "Build", "vcvarsall.bat")
-      File.exist?(vcvarsall) ? vcvarsall : nil
     end
 
     # Runs vcvarsall.bat for the x64 architecture and merges the resulting
     # environment variables into the current process's ENV so that cl.exe
     # and related tools become available on PATH.
-    def run_vcvarsall(vcvarsall)
-      stdout = IO.popen(["cmd.exe", "/c", vcvarsall_command(vcvarsall)], &:read)
+    #
+    # Finds the path to vcvarsall.bat for the given devenv.exe path, or nil
+    # if it cannot be located.  devenv.exe lives at:
+    #   <root>\Common7\IDE\devenv.exe
+    # vcvarsall.bat lives at:
+    #   <root>\VC\Auxiliary\Build\vcvarsall.bat
+    #
+    # Parses the output of `vcvarsall.bat … && set` and merges the resulting
+    # environment variables into the current process's ENV.
+    def MSVC.vcvarsall(devenv_path)
+      # Calculate the location of vcvarsall.bat
+      install_root = File.expand_path("../../..", devenv_path)
+
+      # Check if a file is actually present there
+      vcvarsall = File.join(install_root, "VC", "Auxiliary", "Build", "vcvarsall.bat")
+      return unless File.exist?(vcvarsall)
+
+      # Run vcvarsall.bat and dump the environment to the shell
+      output = `"#{vcvarsall}" x64 && set`
       status = $?
       return unless status.success?
 
-      load_vcvarsall(stdout)
-    end
-
-    # Builds the cmd.exe command string for calling vcvarsall.bat and capturing
-    # the resulting environment variables.  The path is double-quoted to handle
-    # spaces; any embedded double quotes are escaped by doubling them, which is
-    # the cmd.exe convention inside a double-quoted string.  Shellwords is not
-    # used here because it produces POSIX sh escaping, which is incompatible
-    # with cmd.exe syntax.
-    def vcvarsall_command(vcvarsall)
-      quoted = '"' + vcvarsall.gsub('"', '""') + '"'
-      "#{quoted} x64 && set"
-    end
-
-    # Parses the output of `vcvarsall.bat … && set` and merges the resulting
-    # environment variables into the current process's ENV.
-    def load_vcvarsall(output)
       output.each_line do |line|
-        key, sep, value = line.chomp.partition("=")
-        next if sep.empty?
+        key, value = line.split("=", 2)
+        next if value.to_s.empty?
 
         ENV[key] = value
       end
