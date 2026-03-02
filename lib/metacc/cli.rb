@@ -9,55 +9,21 @@ module MetaCC
   #
   # Usage:
   #   metacc <sources...> -o <output> [options]       – compile source file(s)
-  #
-  # General:
-  #   -Wall -Werror
-  #   --std=c11 --std=c17 --std=c23
-  #   --std=c++11 --std=c++14 --std=c++17 --std=c++20 --std=c++23 --std=c++26
-  #
-  # Linking:
-  #   -c                 – compile only; don't link
-  #   -l, -L             - specify linker input
-  #   --shared           – produce a shared library
-  #   --static           – produce a static library
-  #   --lto              - enable link time optimization
-  #   --strip / -s       – strip unneeded symbols
-  #
-  # Code generation:
-  #   -O0, -O1, -O2, -O3                             - Set the optimization level
-  #   -msse4.2 -mavx -mavx2 -mavx512 --arch=native   - Compile for the given target
-  #   --no-rtti --no-exceptions
-  #   --pic
-  #
-  # Debugging:
-  #   --debug / -g
-  #   --asan --ubsan --msan
-  #
-  # Toolchain-specific flags (passed to Driver#compile via xflags:):
-  #   --xmsvc VALUE     – appended to xflags[MSVC]
-  #   --xgnu  VALUE     – appended to xflags[GNU]
-  #   --xclang VALUE    – appended to xflags[Clang]
-  #   --xclangcl VALUE  – appended to xflags[ClangCL]
   class CLI
-
-    # Maps long-form CLI flag names to Driver::RECOGNIZED_FLAGS symbols.
-    # Optimization-level flags are handled separately via -O LEVEL.
-    LONG_FLAGS = {
-      "lto" =>                       :lto,
-      "asan" =>                      :asan,
-      "ubsan" =>                     :ubsan,
-      "msan" =>                      :msan,
-      "no-rtti" =>                   :no_rtti,
-      "no-exceptions" =>             :no_exceptions,
-      "pic" =>                       :pic,
-      "no-semantic-interposition" => :no_semantic_interposition,
-      "no-omit-frame-pointer" =>     :no_omit_frame_pointer,
-      "no-strict-aliasing" =>        :no_strict_aliasing
-    }.freeze
 
     WARNING_CONFIGS = {
       "all" =>   :warn_all,
       "error" => :warn_error
+    }
+
+    SANITIZERS = {
+      "address" =>   :asan,
+      "addr" =>      :asan,
+      "undefined" => :ubsan,
+      "ub" =>        :ubsan,
+      "memory" =>    :msan,
+      "mem" =>       :msan,
+      "leak" =>      :lsan
     }
 
     TARGETS = {
@@ -85,7 +51,8 @@ module MetaCC
       "xmsvc" => MSVC,
       "xgnu" => GNU,
       "xclang" => Clang,
-      "xclangcl" => ClangCL
+      "xclangcl" => ClangCL,
+      "xtinycc" => TinyCC
     }.freeze
 
     def initialize(driver: Driver.new)
@@ -122,6 +89,11 @@ module MetaCC
     private
 
     def setup_compile_options(parser, options)
+      parser.require_exact = true
+
+      parser.separator ""
+      parser.separator "General options:"
+
       parser.on("-o FILEPATH", "Output file path") do |value|
         options[:output_path] = value
       end
@@ -131,26 +103,72 @@ module MetaCC
       parser.on("-D DEF", "Add a preprocessor definition") do |value|
         options[:defs] << value
       end
-      parser.on("-O LEVEL", /\A[0-3]|s\z/, "Optimization level (0–3)") do |level|
-        options[:flags] << :"o#{level}"
-      end
-      parser.on("-m", "--arch ARCH", "Target architecture") do |value|
-        options[:flags] << TARGETS[value]
-      end
-      parser.on("-g", "--debug", "Emit debugging symbols") do
-        options[:flags] << :debug
-      end
-      parser.on("--std STANDARD", "Specify the language standard") do |value|
+      parser.on("--std=STANDARD", "Specify the language standard") do |value|
         options[:flags] << STANDARDS[value]
       end
       parser.on("-W OPTION", "Configure warnings") do |value|
         options[:flags] << WARNING_CONFIGS[value]
       end
-      parser.on("-c", "Produce object files") do
-        options[:link] = false
-      end
       parser.on("-r", "--run", "Run the compiled executable after a successful build") do
         options[:run] = true
+      end
+
+      parser.separator ""
+      parser.separator "Debugging:"
+
+      parser.on("-g", "--debug-info", "Emit debugging symbols") do
+        options[:flags] << :debug_info
+      end
+      parser.on("-S", "--sanitize SANITIZER", "Enable sanitizer (address, undefined, leak, memory)") do |value|
+        options[:flags] << SANITIZERS[value]
+      end
+
+      parser.separator ""
+      parser.separator "Optimization:"
+
+      parser.on("-O LEVEL", /\A[0-3]|s\z/, "Optimization level (0, 1, 2, 3, or s)") do |level|
+        options[:flags] << :"o#{level}"
+      end
+      parser.on("--lto", "Enable link time optimization") do
+        options[:flags] << :lto
+      end
+      parser.on("--omit-frame-pointer") do |value|
+        options[:flags] << :omit_frame_pointer
+      end
+      parser.on("--strict-aliasing") do |value|
+        options[:flags] << :strict_aliasing
+      end
+
+      parser.separator ""
+      parser.separator "Code generation:"
+
+      parser.on("-m", "--arch=ARCH", "Target architecture") do |value|
+        options[:flags] << TARGETS[value]
+      end
+      parser.on("--pic", "Generate position independent code") do |value|
+        options[:flags] << :pic
+      end
+      parser.on("--no-rtti", "Disable runtime type information") do |value|
+        options[:flags] << :no_rtti
+      end
+      parser.on("--no-exceptions", "Disable exceptions (and unwinding info)") do |value|
+        options[:flags] << :no_exceptions
+      end
+
+      parser.separator ""
+      parser.separator "Linking:"
+
+      parser.on("--static", "Produce a static library") do
+        options[:flags] << :static
+      end
+      parser.on("--shared", "Produce a shared library") do |value|
+        options[:flags] << :shared
+      end
+      parser.on("--shared-compat", "Produce a shared library with full LD_PRELOAD compatability") do |value|
+        options[:flags] << :shared_compat
+      end
+      parser.on("-c", "Compile only (produce object files without linking)") do
+        options[:link] = false
       end
       parser.on("-l LIB", "Link against library LIB") do |value|
         options[:libs] << value
@@ -158,28 +176,31 @@ module MetaCC
       parser.on("-L DIR", "Add linker library search path") do |value|
         options[:link_paths] << value
       end
-      parser.on("--shared", "Produce a shared library") do
-        options[:flags] << :shared
-      end
-      parser.on("--static", "Produce a static library") do
-        options[:flags] << :static
-      end
+
       parser.on("-s", "--strip", "Strip unneeded symbols") do
         options[:flags] << :strip
       end
-      LONG_FLAGS.each do |name, sym|
-        parser.on("--#{name}") do
-          options[:flags] << sym
+
+      parser.separator ""
+      parser.separator "Compiler specific:"
+
+      XFLAGS.each do |name, toolchain_class|
+        toolchain_name = toolchain_class.name.split("::").last
+        parser.on("--#{name} FLAG", "Forward FLAG to the compiler if compiling with #{toolchain_name}") do |value|
+          options[:xflags][toolchain_class] ||= []
+          options[:xflags][toolchain_class] << value
         end
       end
-      XFLAGS.each do |name, tc_class|
-        parser.on("--#{name} VALUE", "Pass VALUE to the #{tc_class} toolchain") do |value|
-          options[:xflags][tc_class] ||= []
-          options[:xflags][tc_class] << value
-        end
-      end
+
+      parser.separator ""
+      parser.separator "Informational:"
+
       parser.on_tail("--version", "Print the toolchain version and exit") do
         puts @driver.toolchain.version_banner
+        exit
+      end
+      parser.on_tail("-h", "--help", "Show this message") do
+        puts parser
         exit
       end
     end

@@ -110,7 +110,7 @@ class MsvcToolchainTest < Minitest::Test
       begin
         MetaCC::MSVC.vcvarsall(devenv_path)
         assert_equal env_value, ENV.fetch(env_key, nil)
-        refute ENV.has_key?("no_equals_sign")
+        refute ENV.key?("no_equals_sign")
       ensure
         ENV.delete(env_key)
       end
@@ -388,7 +388,7 @@ class TinyCCToolchainTest < Minitest::Test
   end
 
   def test_libs_produce_dash_l_flags_in_link_mode
-    cmd = tcc.compile_and_link_commands(["main.o"], "main",
+    cmds = tcc.compile_and_link_commands(["main.o"], "main",
       flags: [], include_paths: [], defs: [], link_paths: [], libs: %w[m pthread])
 
     assert_includes cmds.flatten, "-lm"

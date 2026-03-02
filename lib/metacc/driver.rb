@@ -17,16 +17,16 @@ module MetaCC
 
     RECOGNIZED_FLAGS = Set.new(
       %i[
-        o0 o1 o2 o3 os
-        sse4_2 avx avx2 avx512 native
-        debug lto
         warn_all warn_error
         c11 c17 c23
         cxx11 cxx14 cxx17 cxx20 cxx23 cxx26
-        asan ubsan msan
-        no_rtti no_exceptions pic
-        no_semantic_interposition no_omit_frame_pointer no_strict_aliasing
-        shared static strip
+        o0 o1 o2 o3 os lto
+        sse4_2 avx avx2 avx512 native
+        asan ubsan msan lsan
+        debug_info
+        omit_frame_pointer strict_aliasing
+        no_rtti no_exceptions
+        pic shared shared_compat static strip
       ]
     ).freeze
 
@@ -153,6 +153,9 @@ module MetaCC
       if unrecognized_flag
         raise "#{unrecognized_flag.inspect} is not a known flag"
       end
+
+      flags << :no_omit_frame_pointer unless flags.include?(:omit_frame_pointer)
+      flags << :no_strict_aliasing unless flags.include?(:strict_aliasing)
 
       flags.flat_map { |flag| @toolchain.flags[flag] }
     end

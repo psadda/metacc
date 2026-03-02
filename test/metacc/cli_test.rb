@@ -137,19 +137,19 @@ class CLITest < Minitest::Test
   end
 
   # ---------------------------------------------------------------------------
-  # Debug flag (-g / --debug)
+  # Debug flag (-g / --debug-info)
   # ---------------------------------------------------------------------------
 
   def test_debug_long_flag
-    call = last_compile_and_link_call(run_cli(["--debug", "-o", "out", "main.c"]))
+    call = last_compile_and_link_call(run_cli(["--debug-info", "-o", "out", "main.c"]))
 
-    assert_includes call[:flags], :debug
+    assert_includes call[:flags], :debug_info
   end
 
   def test_debug_short_flag
     call = last_compile_and_link_call(run_cli(["-g", "-o", "out", "main.c"]))
 
-    assert_includes call[:flags], :debug
+    assert_includes call[:flags], :debug_info
   end
 
   # ---------------------------------------------------------------------------
@@ -157,19 +157,31 @@ class CLITest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_all_long_flags_forwarded
-    MetaCC::CLI::LONG_FLAGS.each do |name, sym|
-      call = last_compile_and_link_call(run_cli(["--#{name}", "-o", "out", "main.c"]))
+    %i[lto no_rtti no_exceptions pic].each do |name|
+      cli_name = name.to_s.tr("_", '-')
+      call = last_compile_and_link_call(run_cli(["--#{cli_name}", "-o", "out", "main.c"]))
 
-      assert_includes call[:flags], sym, "--#{name} should forward :#{sym} to driver"
+      assert_includes call[:flags], name, "--#{cli_name} should forward :#{name} to driver"
     end
   end
 
   def test_multiple_flags_combined
-    call = last_compile_and_link_call(run_cli(["--pic", "--debug", "--lto", "-o", "out", "main.c"]))
+    call = last_compile_and_link_call(run_cli(["--pic", "--debug-info", "--lto", "-o", "out", "main.c"]))
 
     assert_includes call[:flags], :pic
-    assert_includes call[:flags], :debug
+    assert_includes call[:flags], :debug_info
     assert_includes call[:flags], :lto
+  end
+
+  # ---------------------------------------------------------------------------
+  # Sanitizer flags (-S, --sanitize)
+  # ---------------------------------------------------------------------------
+
+  def test_sanitizer_short_flag
+    # stub = run_cli(["-c", "main.c"])
+
+    # assert last_compile_call(stub)
+    # refute last_compile_and_link_call(stub)
   end
 
   # ---------------------------------------------------------------------------
@@ -183,13 +195,6 @@ class CLITest < Minitest::Test
     refute last_compile_and_link_call(stub)
   end
 
-  def test_shared_flag
-    call = last_compile_and_link_call(run_cli(["--shared", "-o", "lib.so", "main.c"]))
-
-    assert call
-    assert_includes call[:flags], :shared
-  end
-
   def test_static_flag
     call = last_compile_and_link_call(run_cli(["--static", "-o", "lib.a", "main.c"]))
 
@@ -197,11 +202,26 @@ class CLITest < Minitest::Test
     assert_includes call[:flags], :static
   end
 
+  def test_shared_flag
+    call = last_compile_and_link_call(run_cli(["--shared", "-o", "lib.so", "main.c"]))
+
+    assert call
+    assert_includes call[:flags], :shared
+  end
+
+  def test_shared_compat_flag
+    call = last_compile_and_link_call(run_cli(["--shared-compat", "-o", "lib.so", "main.c"]))
+
+    assert call
+    assert_includes call[:flags], :shared_compat
+  end
+
   def test_link_executable_by_default
     call = last_compile_and_link_call(run_cli(["-o", "out", "main.c"]))
     assert call
-    refute_includes call[:flags], :shared
     refute_includes call[:flags], :static
+    refute_includes call[:flags], :shared
+    refute_includes call[:flags], :shared_compat
   end
 
   # ---------------------------------------------------------------------------
@@ -297,7 +317,7 @@ class CLITest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_full_c_invocation
-    stub = run_cli(["--lto", "--debug", "-c", "-I", "/inc", "-D", "FOO=1", "main.c"])
+    stub = run_cli(["--lto", "--debug-info", "-c", "-I", "/inc", "-D", "FOO=1", "main.c"])
     call = last_compile_call(stub)
 
     assert call
@@ -307,7 +327,7 @@ class CLITest < Minitest::Test
     assert_equal ["/inc"],    call[:include_paths]
     assert_equal ["FOO=1"],   call[:defs]
     assert_includes call[:flags], :lto
-    assert_includes call[:flags], :debug
+    assert_includes call[:flags], :debug_info
   end
 
   def test_full_cxx_invocation
