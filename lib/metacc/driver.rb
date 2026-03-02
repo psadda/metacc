@@ -116,7 +116,7 @@ module MetaCC
       flags = translate_flags(flags)
       flags.concat(xflags[@toolchain.class] || [])
 
-      cmd = @toolchain.compile_and_link_command(
+      cmds = @toolchain.compile_and_link_commands(
         input_files,
         output_path,
         flags:,
@@ -126,7 +126,7 @@ module MetaCC
         link_paths:
       )
 
-      run_command(cmd, env:, working_dir:)
+      cmds.each { |cmd| run_command(cmd, env:, working_dir:) }
       output_path
     end
 

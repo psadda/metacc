@@ -57,7 +57,7 @@ module MetaCC
       raise "#{self.class}#command not implemented"
     end
 
-    def compile_and_link_command(
+    def compile_and_link_commands(
       input_files,
       output_file,
       flags:,
@@ -133,7 +133,7 @@ module MetaCC
       [c, "-c", *flags, *inc_flags, *def_flags, *input_files]
     end
 
-    def compile_and_link_command(
+    def compile_and_link_commands(
       input_files,
       output_file,
       flags:,
@@ -146,7 +146,7 @@ module MetaCC
       def_flags = defs.map { |d| "-D#{d}" }
       lib_path_flags = link_paths.map { |p| "-L#{p}" }
       lib_flags      = libs.map { |l| "-l#{l}" }
-      [c, *flags, *inc_flags, *def_flags, *input_files, *lib_path_flags, *lib_flags, "-o", output_file]
+      [[c, *flags, *inc_flags, *def_flags, *input_files, *lib_path_flags, *lib_flags, "-o", output_file]]
     end
 
     GNU_FLAGS = {
@@ -235,7 +235,7 @@ module MetaCC
       [c, "/c", *flags, *inc_flags, *def_flags, *input_files]
     end
 
-    def compile_and_link_command(
+    def compile_and_link_commands(
       input_files,
       output_file,
       flags:,
@@ -248,9 +248,9 @@ module MetaCC
       def_flags = defs.map { |d| "/D#{d}" }
       lib_flags      = libs.map { |l| "#{l}.lib" }
       lib_path_flags = link_paths.map { |p| "/LIBPATH:#{p}" }
-      cmd = [c, *flags, *inc_flags, *def_flags, *input_files, *lib_flags, "/Fe", output_file]
+      cmd = [c, *flags, *inc_flags, *def_flags, *input_files, *lib_flags, "/Fe#{output_file}"]
       cmd += ["/link", *lib_path_flags] unless lib_path_flags.empty?
-      cmd
+      [cmd]
     end
 
     MSVC_FLAGS = {
@@ -407,6 +407,15 @@ module MetaCC
 
     def initialize(search_paths: [])
       super("tcc", search_paths:)
+      @ar = resolve_command("ar")
+    end
+
+    def compile_and_link_commands(input_files, output_file, **options)
+      commands = super(input_files, output_file, **options)
+      if options[:flags].include?(:static)
+        object_files = input_files.map { |f| f.sub(/\.c\z/, ".o") }
+        commands << [@ar, "rcs", output_file, *object_files]
+      end
     end
 
     # TinyCC does not support C++.
@@ -452,7 +461,7 @@ module MetaCC
       no_omit_frame_pointer:     [],
       no_strict_aliasing:        [],
       shared:                    ["-shared"],
-      static:                    ["-c", "-static"],
+      static:                    ["-c"],
       strip:                     []
     }.freeze
 
