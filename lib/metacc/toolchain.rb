@@ -290,8 +290,8 @@ module MetaCC
       pic:                   [],
       omit_frame_pointer:    ["/Oy"],
       no_omit_frame_pointer: ["/Oy-"],
-      strict_aliasing:       ["-fstrict-aliasing"],
-      no_strict_aliasing:    ["-fno-strict-aliasing"],
+      strict_aliasing:       [],
+      no_strict_aliasing:    [],
       shared:                ["/LD"],
       shared_compat:         ["/LD"],
       static:                ["/c"],
@@ -399,8 +399,10 @@ module MetaCC
     end
 
     CLANG_CL_FLAGS = MSVC_FLAGS.merge(
-      o3:  ["/Ot"],       # Clang-CL treats /Ot as -O3
-      lto: ["-flto=thin"]
+      o3:                 ["/Ot"],       # Clang-CL treats /Ot as -O3
+      lto:                ["-flto=thin"]
+      strict_aliasing:    ["/clang:-fstrict-aliasing"]
+      no_strict_aliasing: ["/clang:-fno-strict-aliasing"]
     ).freeze
 
     def flags
