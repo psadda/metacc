@@ -117,9 +117,9 @@ module MetaCC
   # GNU-compatible toolchain (gcc).
   class GNU < Toolchain
 
-    def initialize(search_paths: [])
-      super
-      @c = resolve_command("gcc")
+    def initialize(cc_command = "gcc", search_paths: [])
+      super(search_paths:)
+      @c = resolve_command(cc_command)
     end
 
     def compile_command(
@@ -197,8 +197,7 @@ module MetaCC
   class Clang < GNU
 
     def initialize(search_paths: [])
-      super
-      @c = resolve_command("clang")
+      super("clang", search_paths:)
     end
 
     CLANG_FLAGS = GNU_FLAGS.merge(lto: ["-flto=thin"]).freeze
@@ -359,6 +358,9 @@ module MetaCC
     # Parses the output of `vcvarsall.bat … && set` and merges the resulting
     # environment variables into the current process's ENV.
     def MSVC.vcvarsall(devenv_path)
+      # See https://stackoverflow.com/a/19929778
+      return if ENV.has_key?("DevEnvDir")
+
       # Calculate the location of vcvarsall.bat
       install_root = File.expand_path("../../..", devenv_path)
 
@@ -372,7 +374,7 @@ module MetaCC
       return unless status.success?
 
       output.each_line do |line|
-        key, value = line.split("=", 2)
+        key, value = line.chomp.split("=", 2)
         next if value.to_s.empty?
 
         ENV[key] = value
@@ -401,43 +403,15 @@ module MetaCC
   end
 
   # TinyCC toolchain (tcc).  TinyCC only supports C, not C++.
-  class TinyCC < Toolchain
+  class TinyCC < GNU
 
     def initialize(search_paths: [])
-      super
-      @c = resolve_command("tcc")
+      super("tcc", search_paths:)
     end
 
     # TinyCC does not support C++.
     def languages
       [:c]
-    end
-
-    def compile_command(
-      input_files,
-      flags:,
-      include_paths:,
-      defs:
-    )
-      inc_flags = include_paths.map { |p| "-I#{p}" }
-      def_flags = defs.map { |d| "-D#{d}" }
-      [c, "-c", *flags, *inc_flags, *def_flags, *input_files]
-    end
-
-    def compile_and_link_command(
-      input_files,
-      output_file,
-      flags:,
-      include_paths:,
-      defs:,
-      link_paths:,
-      libs:
-    )
-      inc_flags = include_paths.map { |p| "-I#{p}" }
-      def_flags = defs.map { |d| "-D#{d}" }
-      lib_path_flags = link_paths.map { |p| "-L#{p}" }
-      lib_flags      = libs.map { |l| "-l#{l}" }
-      [c, *flags, *inc_flags, *def_flags, *input_files, *lib_path_flags, *lib_flags, "-o", output_file]
     end
 
     def version_banner

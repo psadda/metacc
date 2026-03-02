@@ -77,7 +77,6 @@ class MsvcToolchainTest < Minitest::Test
   def test_vcvarsall_updates_environment_from_vcvarsall_bat
     env_key = "METACC_TEST_#{SecureRandom.hex(8)}"
     env_value = "METACC_TEST_VALUE_#{SecureRandom.hex(8)}"
-    setup_done = false
 
     Dir.mktmpdir do |dir|
       vcvarsall_dir = File.join(dir, "VC", "Auxiliary", "Build")
@@ -99,13 +98,12 @@ class MsvcToolchainTest < Minitest::Test
   def test_vcvarsall_skips_lines_without_equals
     env_key = "METACC_TEST_#{SecureRandom.hex(8)}"
     env_value = "METACC_TEST_VALUE_#{SecureRandom.hex(8)}"
-    setup_done = false
 
     Dir.mktmpdir do |dir|
       vcvarsall_dir = File.join(dir, "VC", "Auxiliary", "Build")
       FileUtils.mkdir_p(vcvarsall_dir)
       vcvarsall_path = File.join(vcvarsall_dir, "vcvarsall.bat")
-      File.write(vcvarsall_path, "no_equals_sign\nSET #{env_key}=#{env_value}\n")
+      File.write(vcvarsall_path, "REM no_equals_sign\nSET #{env_key}=#{env_value}\n")
 
       devenv_path = File.join(dir, "Common7", "IDE", "devenv.exe")
 
