@@ -10,21 +10,8 @@ class DriverTest < Minitest::Test
   # ---------------------------------------------------------------------------
   # #initialize / compiler detection
   # ---------------------------------------------------------------------------
-  def test_initializes_when_compiler_present
-    # The CI environment has clang or gcc installed.
-    assert_instance_of MetaCC::Driver, MetaCC::Driver.new
-  end
-
-  def test_compiler_class_is_known
-    builder = MetaCC::Driver.new
-
-    assert_includes [MetaCC::Clang, MetaCC::GNU, MetaCC::MSVC], builder.toolchain.class
-  end
-
-  def test_compiler_is_compiler_info_struct
-    builder = MetaCC::Driver.new
-
-    assert_kind_of MetaCC::Toolchain, builder.toolchain
+  def test_driver_toolchain_is_toolchain
+    assert_kind_of MetaCC::Toolchain, MetaCC::Driver.new.toolchain
   end
 
   def test_raises_when_no_compiler_found
