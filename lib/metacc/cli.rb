@@ -207,15 +207,15 @@ module MetaCC
 
     def validate_options!(flags, output_path, link:, run:)
       if !link && output_path
-        raise InvalidOption, "cannot specify output path (-o) in compile only mode (-c)"
+        raise OptionParser::InvalidOption, "cannot specify output path (-o) in compile only mode (-c)"
       end
 
       if link && !output_path
-        raise InvalidOption, "must specify an output path (-o)"
+        raise OptionParser::InvalidOption, "must specify an output path (-o)"
       end
 
       if run && (!link || flags.include?(:shared) || flags.include?(:static))
-        raise InvalidOption, "--run may not be used with -c, --shared, or --static"
+        raise OptionParser::InvalidOption, "--run may not be used with -c, --shared, or --static"
       end
     end
 
@@ -229,8 +229,6 @@ module MetaCC
         @driver.compile(input_paths, **options)
       end
     end
-
-    class InvalidOption < StandardError; end
 
   end
 
