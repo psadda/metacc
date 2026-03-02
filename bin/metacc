@@ -5,4 +5,10 @@ $LOAD_PATH.unshift(File.join(__dir__, "..", "lib"))
 
 require "metacc/cli"
 
-MetaCC::CLI.new.run(ARGV)
+begin
+  MetaCC::CLI.new.run(ARGV)
+rescue MetaCC::CLI::InvalidOption, MetaCC::ToolchainNotFoundError => e
+  warn "#{$0} error: #{e.message}"
+rescue MetaCC::CompileError => e
+  warn e.message
+end

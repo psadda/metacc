@@ -28,7 +28,7 @@ class DriverTest < Minitest::Test
   end
 
   def test_raises_when_no_compiler_found
-    assert_raises(MetaCC::CompilerNotFoundError) { MetaCC::Driver.new(prefer: []) }
+    assert_raises(MetaCC::ToolchainNotFoundError) { MetaCC::Driver.new(prefer: []) }
   end
 
   # ---------------------------------------------------------------------------
@@ -46,29 +46,27 @@ class DriverTest < Minitest::Test
   # ---------------------------------------------------------------------------
   # #compile – compile to object files
   # ---------------------------------------------------------------------------
-  def test_compile_c_source_returns_true_and_creates_object_file
+  def test_compile_c_source_creates_object_file
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, working_dir: dir)
+      builder.compile(src, working_dir: dir)
 
-      assert result, "expected compile to return true"
       expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
       assert_path_exists expected_obj, "expected object file to be created"
     end
   end
 
-  def test_compile_cxx_source_returns_true_and_creates_object_file
+  def test_compile_cxx_source_creates_object_file
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.cpp")
       File.write(src, "int main() { return 0; }\n")
 
-      result = builder.compile(src, working_dir: dir)
+      builder.compile(src, working_dir: dir)
 
-      assert result, "expected compile to return true"
       expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
       assert_path_exists expected_obj, "expected object file to be created"
     end
@@ -84,28 +82,25 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "main.c")
       File.write(src, "#include <config.h>\nint main(void) { return ANSWER - ANSWER; }\n")
 
-      result = builder.compile(
+      builder.compile(
         src,
         include_paths: [inc_dir],
         defs:          ["UNUSED=1"],
         working_dir:   dir
       )
 
-      assert result, "expected compile to return true"
       expected_obj = File.join(dir, "main#{builder.toolchain.default_extension(:objects)}")
       assert_path_exists expected_obj, "expected object file to be created"
     end
   end
 
-  def test_compile_broken_source_returns_false
+  def test_compile_broken_source_raises_compile_error
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "broken.c")
       File.write(src, "this is not valid C code {\n")
 
-      result = builder.compile(src, working_dir: dir)
-
-      refute result, "expected compile to return false for invalid source"
+      assert_raises(MetaCC::CompileError) { builder.compile(src, working_dir: dir) }
     end
   end
 
@@ -129,12 +124,12 @@ class DriverTest < Minitest::Test
     end
   end
 
-  def test_compile_and_link_executable_missing_object_returns_false
+  def test_compile_and_link_executable_missing_object_raises_compile_error
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
-      result = builder.compile_and_link([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
-
-      refute result, "expected compile_and_link to return nil for missing object file"
+      assert_raises(MetaCC::CompileError) do
+        builder.compile_and_link([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
+      end
     end
   end
 
@@ -171,9 +166,10 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, env: {}, working_dir: dir)
+      builder.compile(src, env: {}, working_dir: dir)
 
-      assert result, "expected compile to succeed with env: and working_dir:"
+      assert_path_exists File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}"),
+                         "expected compile to succeed with env: and working_dir:"
     end
   end
 
@@ -200,9 +196,10 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, env: { "MY_BUILD_FLAG" => "1" }, working_dir: dir)
+      builder.compile(src, env: { "MY_BUILD_FLAG" => "1" }, working_dir: dir)
 
-      assert result, "expected compile to succeed when env: contains custom vars"
+      assert_path_exists File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}"),
+                         "expected compile to succeed when env: contains custom vars"
     end
   end
 
@@ -213,9 +210,8 @@ class DriverTest < Minitest::Test
       File.write(src, "int main(void) { return 0; }\n")
 
       # Run with working_dir set to the tmp dir; absolute paths still resolve.
-      result = builder.compile(src, working_dir: dir)
+      builder.compile(src, working_dir: dir)
 
-      assert result, "expected compile to succeed with working_dir set"
       expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
       assert_path_exists expected_obj, "object file should exist after compile with working_dir"
     end
@@ -232,8 +228,8 @@ class DriverTest < Minitest::Test
     assert_instance_of MetaCC::GNU, builder.toolchain
   end
 
-  def test_prefer_empty_raises_compiler_not_found
-    assert_raises(MetaCC::CompilerNotFoundError) { MetaCC::Driver.new(prefer: []) }
+  def test_prefer_empty_raises_toolchain_not_found
+    assert_raises(MetaCC::ToolchainNotFoundError) { MetaCC::Driver.new(prefer: []) }
   end
 
   def test_prefer_default_is_clang_gnu_msvc_order
@@ -281,41 +277,40 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, xflags: { tc_class => [] }, working_dir: dir)
+      builder.compile(src, xflags: { tc_class => [] }, working_dir: dir)
 
-      assert result, "expected compile with class-keyed xflags to succeed"
+      assert_path_exists File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}"),
+                         "expected compile with class-keyed xflags to succeed"
     end
   end
 
   # ---------------------------------------------------------------------------
-  # #compile return value – true on success, false on failure
+  # #compile – does not raise on success, raises CompileError on failure
   # ---------------------------------------------------------------------------
-  def test_compile_returns_true_on_success
+  def test_compile_does_not_raise_on_success
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, working_dir: dir)
+      builder.compile(src, working_dir: dir)
 
-      assert_equal true, result
+      assert_path_exists File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
     end
   end
 
-  def test_compile_returns_false_on_failure
+  def test_compile_raises_compile_error_on_failure
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "broken.c")
       File.write(src, "this is not valid C code {\n")
 
-      result = builder.compile(src, working_dir: dir)
-
-      assert_equal false, result
+      assert_raises(MetaCC::CompileError) { builder.compile(src, working_dir: dir) }
     end
   end
 
   # ---------------------------------------------------------------------------
-  # #compile_and_link return value – output path on success, nil on failure
+  # #compile_and_link return value – output path on success, raises CompileError on failure
   # ---------------------------------------------------------------------------
   def test_compile_and_link_returns_output_path_for_executable
     builder = MetaCC::Driver.new
@@ -335,12 +330,12 @@ class DriverTest < Minitest::Test
     end
   end
 
-  def test_compile_and_link_returns_nil_for_missing_object
+  def test_compile_and_link_raises_compile_error_for_missing_object
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
-      result = builder.compile_and_link([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
-
-      assert_nil result
+      assert_raises(MetaCC::CompileError) do
+        builder.compile_and_link([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
+      end
     end
   end
 
@@ -357,27 +352,25 @@ class DriverTest < Minitest::Test
     end
   end
 
-  def test_compile_with_objects_flag_returns_true_on_success
+  def test_compile_with_objects_flag_does_not_raise_on_success
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, working_dir: dir)
+      builder.compile(src, working_dir: dir)
 
-      assert_equal true, result
+      assert_path_exists File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
     end
   end
 
-  def test_compile_with_objects_flag_returns_false_on_failure
+  def test_compile_with_objects_flag_raises_compile_error_on_failure
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "broken.c")
       File.write(src, "this is not valid C code {\n")
 
-      result = builder.compile(src, working_dir: dir)
-
-      assert_equal false, result
+      assert_raises(MetaCC::CompileError) { builder.compile(src, working_dir: dir) }
     end
   end
 

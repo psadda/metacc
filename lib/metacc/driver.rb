@@ -1,11 +1,15 @@
 # frozen_string_literal: true
 
+require "open3"
 require_relative "toolchain"
 
 module MetaCC
 
   # Raised when no supported C/C++ compiler can be found on the system.
-  class CompilerNotFoundError < StandardError; end
+  class CompileError < StandardError; end
+
+  # Raised when no supported C/C++ compiler can be found on the system.
+  class ToolchainNotFoundError < StandardError; end
 
   # Driver wraps C and C++ compile and link operations using the first
   # available compiler found on the system (Clang, GCC, or MSVC).
@@ -36,9 +40,8 @@ module MetaCC
     #                                   Defaults to [Clang, GNU, MSVC].
     # @param search_paths [Array<String>] directories to search for toolchain executables
     #                                    before falling back to PATH. Defaults to [].
-    # @raise [CompilerNotFoundError] if no supported compiler is found.
-    def initialize(prefer: [Clang, GNU, MSVC],
-                   search_paths: [])
+    # @raise [ToolchainNotFoundError] if no supported compiler is found.
+    def initialize(prefer: [Clang, GNU, MSVC], search_paths: [])
       @toolchain = select_toolchain!(prefer, search_paths)
     end
 
@@ -52,9 +55,7 @@ module MetaCC
     # @param defs           [Array<String>] preprocessor macros (e.g. "FOO" or "FOO=1")
     # @param env            [Hash] environment variables to set for the subprocess
     # @param working_dir    [String] working directory for the subprocess (default: ".")
-    # @return [String, true, nil] the (possibly extension-augmented) output path on success,
-    #   true if output_path was nil and the command succeeded,
-    #   nil if the underlying toolchain executable returned a non-zero exit status
+    # @raise [CompileError] if the underlying toolchain executable returns a non-zero exit status
     def compile(
       input_files,
       flags: [],
@@ -92,9 +93,8 @@ module MetaCC
     # @param libs           [Array<String>] library names to link (e.g. "m", "pthread")
     # @param env            [Hash] environment variables to set for the subprocess
     # @param working_dir    [String] working directory for the subprocess (default: ".")
-    # @return [String, true, nil] the (possibly extension-augmented) output path on success,
-    #   true if output_path was nil and the command succeeded,
-    #   nil if the underlying toolchain executable returned a non-zero exit status
+    # @return [String] the (possibly extension-augmented) output path on success
+    # @raise [CompileError] if the underlying toolchain executable returns a non-zero exit status
     def compile_and_link(
       input_files,
       output_path,
@@ -126,7 +126,8 @@ module MetaCC
         link_paths:
       )
 
-      run_command(cmd, env:, working_dir:) ? output_path : nil
+      run_command(cmd, env:, working_dir:)
+      output_path
     end
 
     private
@@ -136,7 +137,8 @@ module MetaCC
         toolchain = toolchain_class.new(search_paths:)
         return toolchain if toolchain.available?
       end
-      raise CompilerNotFoundError, "No supported C/C++ compiler found (tried clang, gcc, cl)"
+      candidate_names = candidates.map { |candidate| candidate.name.split("::").last }
+      raise ToolchainNotFoundError, "no supported C/C++ toolchain found (tried #{candidate_names.join(", ")})"
     end
 
     def apply_default_extension(path, output_type)
@@ -156,7 +158,8 @@ module MetaCC
     end
 
     def run_command(cmd, env: {}, working_dir: ".")
-      !!system(env, *cmd, chdir: working_dir, out: File::NULL, err: File::NULL)
+      _out, err, status = Open3.capture3(env, *cmd, chdir: working_dir)
+      raise CompileError, err unless status.success?
     end
 
   end

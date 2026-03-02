@@ -179,39 +179,37 @@ module MetaCC
         end
       end
       parser.on_tail("--version", "Print the toolchain version and exit") do
-        puts @driver.toolchain&.version_banner
+        puts @driver.toolchain.version_banner
         exit
       end
     end
 
     def validate_options!(flags, output_path, link:, run:)
       if !link && output_path
-        warn "error: cannot specify output path (-o) in compile only mode (-c)"
-        exit 1
+        raise InvalidOption, "cannot specify output path (-o) in compile only mode (-c)"
       end
 
       if link && !output_path
-        warn "error: must specify an output path (-o)"
-        exit 1
+        raise InvalidOption, "must specify an output path (-o)"
       end
 
       if run && (!link || flags.include?(:shared) || flags.include?(:static))
-        warn "error: --run may not be used with -c, --shared, or --static"
-        exit 1
+        raise InvalidOption, "--run may not be used with -c, --shared, or --static"
       end
     end
 
     def invoke(input_paths, desired_output_path = nil, link: true, run: false, **options)
       if link
         actual_output_path = @driver.compile_and_link(input_paths, desired_output_path, **options)
-        exit 1 unless actual_output_path
         system(actual_output_path) if run
       else
         options.delete(:link_paths)
         options.delete(:libs)
-        exit 1 unless @driver.compile(input_paths, **options)
+        @driver.compile(input_paths, **options)
       end
     end
+
+    class InvalidOption < StandardError; end
 
   end
 
