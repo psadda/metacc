@@ -41,7 +41,7 @@ module MetaCC
     # @param search_paths [Array<String>] directories to search for toolchain executables
     #                                    before falling back to PATH. Defaults to [].
     # @raise [ToolchainNotFoundError] if no supported compiler is found.
-    def initialize(prefer: [MSVC], search_paths: [])
+    def initialize(prefer: [Clang, GNU, MSVC], search_paths: [])
       @toolchain = select_toolchain!(prefer, search_paths)
     end
 

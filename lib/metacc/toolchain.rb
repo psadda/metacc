@@ -375,16 +375,34 @@ module MetaCC
       vcvarsall = File.join(install_root, "VC", "Auxiliary", "Build", "vcvarsall.bat")
       return unless File.exist?(vcvarsall)
 
-      # Run vcvarsall.bat and dump the environment to the shell
-      output = `"#{vcvarsall}" x64 && set`
-      status = $?
-      return unless status.success?
+      output = vcvarsall_env_output(vcvarsall)
+      return unless output
 
       output.each_line do |line|
         key, value = line.chomp.split("=", 2)
         next if value.to_s.empty?
 
         ENV[key] = value
+      end
+    end
+
+    # Returns KEY=VALUE environment lines from the given vcvarsall.bat path.
+    # On Windows, executes the bat file and captures the resulting environment
+    # via `set`.  On other platforms, parses SET KEY=VALUE lines directly from
+    # the bat file content (used for cross-platform testing).
+    def MSVC.vcvarsall_env_output(vcvarsall_path)
+      if RbConfig::CONFIG["host_os"].match?(/mswin|mingw|cygwin/)
+        output = `"#{vcvarsall_path}" x64 && set`
+        $?.success? ? output : nil
+      else
+        begin
+          File.readlines(vcvarsall_path).filter_map do |line|
+            m = line.strip.match(/\ASET\s+([^=\s]+)=(.*)\z/i)
+            "#{m[1]}=#{m[2]}" if m
+          end.join("\n")
+        rescue IOError, SystemCallError
+          nil
+        end
       end
     end
 

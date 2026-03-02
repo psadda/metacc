@@ -11,6 +11,8 @@ module MetaCC
   #   metacc <sources...> -o <output> [options]       – compile source file(s)
   class CLI
 
+    InvalidOption = OptionParser::InvalidOption
+
     WARNING_CONFIGS = {
       "all" =>   :warn_all,
       "error" => :warn_error
