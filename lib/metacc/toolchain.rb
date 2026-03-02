@@ -17,7 +17,7 @@ module MetaCC
       @search_paths = search_paths
     end
 
-    # Returns true if this toolchain's primary compiler is present in PATH.
+    # Returns true if this toolchain's primary compiler can be found
     def available?
       command_available?(c)
     end
@@ -32,8 +32,6 @@ module MetaCC
     # Returns true if +command+ is present in PATH, false otherwise.
     # Intentionally ignores the exit status – only ENOENT (not found) matters.
     def command_available?(command)
-      return false if command.nil?
-
       !system(command, "--version", out: File::NULL, err: File::NULL).nil?
     end
 
@@ -50,7 +48,24 @@ module MetaCC
     # Returns the full command array for the given inputs, output, and flags.
     # The output mode (object files, shared library, static library, or
     # executable) is determined by the translated flags.
-    def command(_input_files, _output, _flags, _include_paths, _definitions, _libs, _linker_include_dirs)
+    def compile_command(
+      input_files,
+      flags:,
+      include_paths:,
+      defs:
+    )
+      raise "#{self.class}#command not implemented"
+    end
+
+    def compile_and_link_command(
+      input_files,
+      output_file,
+      flags:,
+      include_paths:,
+      defs:,
+      link_paths:,
+      libs:
+    )
       raise "#{self.class}#command not implemented"
     end
 
@@ -107,14 +122,31 @@ module MetaCC
       @c = resolve_command("gcc")
     end
 
-    def command(input_files, output, flags, include_paths, definitions, libs, linker_include_dirs)
+    def compile_command(
+      input_files,
+      flags:,
+      include_paths:,
+      defs:
+    )
       inc_flags = include_paths.map { |p| "-I#{p}" }
-      def_flags = definitions.map { |d| "-D#{d}" }
-      link_mode = !flags.include?("-c")
-      lib_path_flags = link_mode ? linker_include_dirs.map { |p| "-L#{p}" } : []
-      lib_flags      = link_mode ? libs.map { |l| "-l#{l}" } : []
-      cmd = [c, *flags, *inc_flags, *def_flags, *input_files, *lib_path_flags, *lib_flags]
-      output.nil? ? cmd : [*cmd, "-o", output]
+      def_flags = defs.map { |d| "-D#{d}" }
+      [c, *flags, *inc_flags, *def_flags, *input_files]
+    end
+
+    def compile_and_link_command(
+      input_files,
+      output_file,
+      flags:,
+      include_paths:,
+      defs:,
+      link_paths:,
+      libs:
+    )
+      inc_flags = include_paths.map { |p| "-I#{p}" }
+      def_flags = defs.map { |d| "-D#{d}" }
+      lib_path_flags = link_paths.map { |p| "-L#{p}" }
+      lib_flags      = libs.map { |l| "-l#{l}" }
+      [c, *flags, *inc_flags, *def_flags, *input_files, *lib_path_flags, *lib_flags, "-o", output_file]
     end
 
     GNU_FLAGS = {
@@ -194,20 +226,33 @@ module MetaCC
       setup_msvc_environment(resolved_cmd)
     end
 
-    def command(input_files, output, flags, include_paths, definitions, libs, linker_include_dirs)
+    def compile_command(
+      input_files,
+      flags:,
+      include_paths:,
+      defs:
+    )
       inc_flags = include_paths.map { |p| "/I#{p}" }
-      def_flags = definitions.map { |d| "/D#{d}" }
+      def_flags = defs.map { |d| "/D#{d}" }
+      [c, *flags, *inc_flags, *def_flags, *input_files]
+    end
 
-      if flags.include?("/c")
-        cmd = [c, *flags, *inc_flags, *def_flags, *input_files]
-        output.nil? ? cmd : [*cmd, "/Fo#{output}"]
-      else
-        lib_flags      = libs.map { |l| "#{l}.lib" }
-        lib_path_flags = linker_include_dirs.map { |p| "/LIBPATH:#{p}" }
-        cmd = [c, *flags, *inc_flags, *def_flags, *input_files, *lib_flags, "/Fe#{output}"]
-        cmd += ["/link", *lib_path_flags] unless lib_path_flags.empty?
-        cmd
-      end
+    def compile_and_link_command(
+      input_files,
+      output_file,
+      flags:,
+      include_paths:,
+      defs:,
+      link_paths:,
+      libs:
+    )
+      inc_flags = include_paths.map { |p| "/I#{p}" }
+      def_flags = defs.map { |d| "/D#{d}" }
+      lib_flags      = libs.map { |l| "#{l}.lib" }
+      lib_path_flags = link_paths.map { |p| "/LIBPATH:#{p}" }
+      cmd = [c, *flags, *inc_flags, *def_flags, *input_files, *lib_flags, "/Fe#{output_file}"]
+      cmd << ["/link", *lib_path_flags] unless lib_path_flags.empty?
+      cmd
     end
 
     MSVC_FLAGS = {
@@ -388,14 +433,35 @@ module MetaCC
       [:c]
     end
 
-    def command(input_files, output, flags, include_paths, definitions, libs, linker_include_dirs)
+    def compile_command(
+      input_files,
+      flags:,
+      include_paths:,
+      defs:
+    )
       inc_flags = include_paths.map { |p| "-I#{p}" }
-      def_flags = definitions.map { |d| "-D#{d}" }
-      link_mode = !flags.include?("-c")
-      lib_path_flags = link_mode ? linker_include_dirs.map { |p| "-L#{p}" } : []
-      lib_flags      = link_mode ? libs.map { |l| "-l#{l}" } : []
-      cmd = [c, *flags, *inc_flags, *def_flags, *input_files, *lib_path_flags, *lib_flags]
-      output.nil? ? cmd : [*cmd, "-o", output]
+      def_flags = defs.map { |d| "-D#{d}" }
+      [c, *flags, *inc_flags, *def_flags, *input_files]
+    end
+
+    def compile_and_link_command(
+      input_files,
+      output_file,
+      flags:,
+      include_paths:,
+      defs:,
+      link_paths:,
+      libs:
+    )
+      inc_flags = include_paths.map { |p| "-I#{p}" }
+      def_flags = defs.map { |d| "-D#{d}" }
+      lib_path_flags = link_paths.map { |p| "-L#{p}" }
+      lib_flags      = libs.map { |l| "-l#{l}" }
+      [c, *flags, *inc_flags, *def_flags, *input_files, *lib_path_flags, *lib_flags, "-o", output_file]
+    end
+
+    def version_banner
+      IO.popen([c, "-v", { err: :out }], &:read)
     end
 
     TINYCC_FLAGS = {

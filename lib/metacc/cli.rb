@@ -93,20 +93,21 @@ module MetaCC
     end
 
     def run(argv)
-      options, input_paths = parse_compile_args(argv)
+      input_paths, options = parse_compile_args(argv)
       output_path = options.delete(:output_path)
-      run_flag = options.delete(:run)
-      validate_options!(options[:flags], output_path, run_flag)
-      invoke(input_paths, output_path, options, run: run_flag)
+      link = !options[:flags].include?(:objects)
+      run = !!options.delete(:run)
+      validate_options!(options[:flags], output_path, run)
+      invoke(input_paths, output_path, link:, run:, **options)
     end
 
     # Parses compile arguments.
-    # Returns [options_hash, remaining_positional_args].
+    # Returns [positional_args, options_hash].
     def parse_compile_args(argv)
       options = {
         include_paths: [],
         defs:          [],
-        linker_paths:  [],
+        link_paths:    [],
         libs:          [],
         output_path:   nil,
         run:           false,
@@ -115,8 +116,8 @@ module MetaCC
       }
       parser = OptionParser.new
       setup_compile_options(parser, options)
-      sources = parser.permute(argv)
-      [options, sources]
+      input_paths = parser.permute(argv)
+      [input_paths, options]
     end
 
     private
@@ -156,7 +157,7 @@ module MetaCC
         options[:libs] << value
       end
       parser.on("-L DIR", "Add linker library search path") do |value|
-        options[:linker_paths] << value
+        options[:link_paths] << value
       end
       parser.on("--shared", "Produce a shared library") do
         options[:flags] << :shared
@@ -203,14 +204,14 @@ module MetaCC
       exit 1
     end
 
-    def run_executable(path)
-      system(path)
-    end
-
-    def invoke(input_paths, output_path, options, run: false)
-      result = @driver.invoke(input_paths, output_path, **options)
-      exit 1 unless result
-      run_executable(result) if run
+    def invoke(input_paths, desired_output_path = nil, link: true, run: false, **options)
+      if link
+        actual_output_path = @driver.compile_and_link(input_paths, desired_output_path, **options)
+        exit 1 unless actual_output_path
+        system(actual_output_path) if run
+      else
+        exit 1 unless @driver.compile(input_paths, **options)
+      end
     end
 
   end

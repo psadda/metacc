@@ -48,42 +48,86 @@ module MetaCC
     # When none of these mode flags is present, an executable is produced.
     #
     # @param input_files    [String, Array<String>] paths to the input files
-    # @param output_path    [String] path for the resulting output file
     # @param flags          [Array<Symbol>] compiler/linker flags
     # @param xflags         [Hash{Class => String}] extra (native) compiler flags keyed by toolchain Class
     # @param include_paths  [Array<String>] directories to add with -I
     # @param defs           [Array<String>] preprocessor macros (e.g. "FOO" or "FOO=1")
-    # @param libs           [Array<String>] library names to link (e.g. "m", "pthread")
-    # @param linker_paths   [Array<String>] linker library search paths (-L / /LIBPATH:)
     # @param env            [Hash] environment variables to set for the subprocess
     # @param working_dir    [String] working directory for the subprocess (default: ".")
     # @return [String, true, nil] the (possibly extension-augmented) output path on success,
     #   true if output_path was nil and the command succeeded,
     #   nil if the underlying toolchain executable returned a non-zero exit status
     # @raise [ArgumentError] if output_path is nil and the :objects flag is not present
-    def invoke(
+    def compile(
+      input_files,
+      flags: [],
+      xflags: {},
+      include_paths: [],
+      defs: [],
+      env: {},
+      working_dir: "."
+    )
+      flags = translate_flags(flags)
+      flags.concat(xflags[@toolchain.class] || [])
+
+      cmd = @toolchain.compile_command(
+        input_files,
+        flags:,
+        include_paths:,
+        defs:
+      )
+
+      !!run_command(cmd, env:, working_dir:)
+    end
+
+    # Invokes the compiler driver for the given input files and output path.
+    # The kind of output (object files, executable, shared library, or static
+    # library) is determined by the flags: +:objects+, +:shared+, or +:static+.
+    # When none of these mode flags is present, an executable is produced.
+    #
+    # @param input_files    [String, Array<String>] paths to the input files
+    # @param output_path    [String] path for the resulting output file
+    # @param flags          [Array<Symbol>] compiler/linker flags
+    # @param xflags         [Hash{Class => String}] extra (native) compiler flags keyed by toolchain Class
+    # @param include_paths  [Array<String>] directories to add with -I
+    # @param defs           [Array<String>] preprocessor macros (e.g. "FOO" or "FOO=1")
+    # @param linker_paths   [Array<String>] linker library search paths (-L / /LIBPATH:)
+    # @param libs           [Array<String>] library names to link (e.g. "m", "pthread")
+    # @param env            [Hash] environment variables to set for the subprocess
+    # @param working_dir    [String] working directory for the subprocess (default: ".")
+    # @return [String, true, nil] the (possibly extension-augmented) output path on success,
+    #   true if output_path was nil and the command succeeded,
+    #   nil if the underlying toolchain executable returned a non-zero exit status
+    # @raise [ArgumentError] if output_path is nil and the :objects flag is not present
+    def compile_and_link(
       input_files,
       output_path,
       flags: [],
       xflags: {},
       include_paths: [],
       defs: [],
+      link_paths: [],
       libs: [],
-      linker_paths: [],
       env: {},
       working_dir: "."
     )
       output_type = output_type_from_flags(flags)
-      raise ArgumentError, "output_path must not be nil" if output_path.nil? && output_type != :objects
+      output_path = apply_default_extension(output_path, output_type)
 
-      output_path = apply_default_extension(output_path, output_type) unless output_path.nil?
-
-      input_files = Array(input_files)
       flags = translate_flags(flags)
       flags.concat(xflags[@toolchain.class] || [])
 
-      cmd = @toolchain.command(input_files, output_path, flags, include_paths, defs, libs, linker_paths)
-      run_command(cmd, env:, working_dir:) ? (output_path || true) : nil
+      cmd = @toolchain.compile_and_link_command(
+        input_files,
+        output_path,
+        flags:,
+        include_paths:,
+        defs:,
+        libs:,
+        link_paths:
+      )
+
+      run_command(cmd, env:, working_dir:) ? output_path : nil
     end
 
     private

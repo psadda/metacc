@@ -5,9 +5,9 @@ require "metacc/cli"
 
 class CLITest < Minitest::Test
 
-  # A stub that records Driver#invoke calls without running subprocesses.
-  # Injected into CLI#run via the driver: keyword argument so the full
-  # argv → Driver#invoke pipeline is exercised end-to-end.
+  # A stub that records Driver#compile and Driver#compile_and_link calls without
+  # running subprocesses.  Injected into CLI#run via the driver: keyword argument
+  # so the full argv → Driver pipeline is exercised end-to-end.
   class StubDriver
 
     attr_reader :calls
@@ -20,13 +20,17 @@ class CLITest < Minitest::Test
       @toolchain ||= StubToolchain.new
     end
 
-    def invoke(input_files, output, flags: [], xflags: {}, include_paths: [], defs: [],
-               libs: [], linker_paths: [], **)
+    def compile(input_files, flags: [], xflags: {}, include_paths: [], defs: [], **)
+      @calls << { input_files: Array(input_files), output: nil, flags:, xflags:,
+                  include_paths:, defs:, libs: [], linker_paths: [] }
+      true
+    end
+
+    def compile_and_link(input_files, output, flags: [], xflags: {}, include_paths: [], defs: [],
+                         link_paths: [], libs: [], **)
       @calls << { input_files: Array(input_files), output:, flags:, xflags:,
-                  include_paths:, defs:, libs:, linker_paths: }
-      # Return the output path like the real Driver on success; fall back to
-      # true when output is nil (e.g. --objects without -o) so that the CLI's
-      # `exit 1 unless result` check still considers the invocation successful.
+                  include_paths:, defs:, libs:, linker_paths: link_paths }
+      # Return the output path like the real Driver on success.
       output || true
     end
 

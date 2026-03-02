@@ -3,6 +3,7 @@
 require "test_helper"
 require "tmpdir"
 require "fileutils"
+require "rbconfig"
 
 class DriverTest < Minitest::Test
 
@@ -43,37 +44,37 @@ class DriverTest < Minitest::Test
   end
 
   # ---------------------------------------------------------------------------
-  # #invoke – compile to object files (objects flag)
+  # #compile – compile to object files (objects flag)
   # ---------------------------------------------------------------------------
-  def test_invoke_objects_c_source_returns_true_and_creates_object_file
+  def test_compile_c_source_returns_true_and_creates_object_file
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
-      obj = File.join(dir, "hello.o")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.invoke(src, obj, flags: [:objects], include_paths: [], defs: [])
+      result = builder.compile(src, flags: [:objects], working_dir: dir)
 
-      assert result, "expected invoke to return true"
-      assert_path_exists obj, "expected object file to be created"
+      assert result, "expected compile to return true"
+      expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
+      assert_path_exists expected_obj, "expected object file to be created"
     end
   end
 
-  def test_invoke_objects_cxx_source_returns_true_and_creates_object_file
+  def test_compile_cxx_source_returns_true_and_creates_object_file
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.cpp")
-      obj = File.join(dir, "hello.o")
       File.write(src, "int main() { return 0; }\n")
 
-      result = builder.invoke(src, obj, flags: [:objects], include_paths: [], defs: [])
+      result = builder.compile(src, flags: [:objects], working_dir: dir)
 
-      assert result, "expected invoke to return true"
-      assert_path_exists obj, "expected object file to be created"
+      assert result, "expected compile to return true"
+      expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
+      assert_path_exists expected_obj, "expected object file to be created"
     end
   end
 
-  def test_invoke_objects_with_include_paths_and_defs
+  def test_compile_with_include_paths_and_defs
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       inc_dir = File.join(dir, "include")
@@ -81,79 +82,83 @@ class DriverTest < Minitest::Test
       File.write(File.join(inc_dir, "config.h"), "#define ANSWER 42\n")
 
       src = File.join(dir, "main.c")
-      obj = File.join(dir, "main.o")
       File.write(src, "#include <config.h>\nint main(void) { return ANSWER - ANSWER; }\n")
 
-      result = builder.invoke(
-        src, obj,
+      result = builder.compile(
+        src,
         flags:         [:objects],
         include_paths: [inc_dir],
-        defs:          ["UNUSED=1"]
+        defs:          ["UNUSED=1"],
+        working_dir:   dir
       )
 
-      assert result, "expected invoke to return true"
-      assert_path_exists obj, "expected object file to be created"
+      assert result, "expected compile to return true"
+      expected_obj = File.join(dir, "main#{builder.toolchain.default_extension(:objects)}")
+      assert_path_exists expected_obj, "expected object file to be created"
     end
   end
 
-  def test_invoke_objects_broken_source_returns_false
+  def test_compile_broken_source_returns_false
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "broken.c")
-      obj = File.join(dir, "broken.o")
       File.write(src, "this is not valid C code {\n")
 
-      result = builder.invoke(src, obj, flags: [:objects], include_paths: [], defs: [])
+      result = builder.compile(src, flags: [:objects], working_dir: dir)
 
-      refute result, "expected invoke to return false for invalid source"
+      refute result, "expected compile to return false for invalid source"
     end
   end
 
   # ---------------------------------------------------------------------------
-  # #invoke – link to executable (no mode flag)
+  # #compile_and_link – link to executable (no mode flag)
   # ---------------------------------------------------------------------------
-  def test_invoke_executable_creates_executable
+  def test_compile_and_link_executable_creates_executable
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "main.c")
-      obj = File.join(dir, "main.o")
-      exe = File.join(dir, "main")
       File.write(src, "int main(void) { return 0; }\n")
+      obj_ext = builder.toolchain.default_extension(:objects)
+      obj = File.join(dir, "main#{obj_ext}")
+      exe = File.join(dir, "main")
 
-      builder.invoke(src, obj, flags: [:objects])
-      result = builder.invoke([obj], exe)
+      builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile_and_link([obj], exe)
 
-      assert result, "expected invoke to return true"
-      assert_path_exists exe, "expected executable to be created"
+      assert result, "expected compile_and_link to return truthy"
+      assert_path_exists result, "expected executable to be created"
     end
   end
 
-  def test_invoke_executable_missing_object_returns_false
+  def test_compile_and_link_executable_missing_object_returns_false
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
-      result = builder.invoke([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
+      result = builder.compile_and_link([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
 
-      refute result, "expected invoke to return false for missing object file"
+      refute result, "expected compile_and_link to return nil for missing object file"
     end
   end
 
   # ---------------------------------------------------------------------------
-  # #invoke – shared library (shared flag)
+  # #compile_and_link – shared library (shared flag)
   # ---------------------------------------------------------------------------
-  def test_invoke_shared_creates_shared_library
+  def test_compile_and_link_shared_creates_shared_library
     builder = MetaCC::Driver.new
+    host_os = RbConfig::CONFIG["host_os"]
+    skip("shared linking not tested on Windows") if host_os.match?(/mswin|mingw|cygwin/)
     skip("MSVC shared linking not tested here") if builder.toolchain.is_a?(MetaCC::MSVC)
 
     Dir.mktmpdir do |dir|
       src = File.join(dir, "util.c")
-      obj = File.join(dir, "util.o")
-      lib = File.join(dir, "libutil.so")
       File.write(src, "int add(int a, int b) { return a + b; }\n")
+      obj_ext = builder.toolchain.default_extension(:objects)
+      obj = File.join(dir, "util#{obj_ext}")
+      lib = File.join(dir, "libutil.so")
 
-      builder.invoke(src, obj, flags: %i[objects pic])
-      result = builder.invoke([obj], lib, flags: [:shared])
+      builder.compile(src, flags: %i[objects pic], working_dir: dir)
+      result = builder.compile_and_link([obj], lib, flags: [:shared])
 
-      assert result, "expected invoke to return true"
+      assert result, "expected compile_and_link to return truthy"
       assert_path_exists lib, "expected shared library to be created"
     end
   end
@@ -161,31 +166,31 @@ class DriverTest < Minitest::Test
   # ---------------------------------------------------------------------------
   # env: and working_dir: per-invocation options
   # ---------------------------------------------------------------------------
-  def test_invoke_accepts_env_and_working_dir
+  def test_compile_accepts_env_and_working_dir
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
-      obj = File.join(dir, "hello.o")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.invoke(src, obj, flags: [:objects], env: {}, working_dir: dir)
+      result = builder.compile(src, flags: [:objects], env: {}, working_dir: dir)
 
-      assert result, "expected invoke to succeed with env: and working_dir:"
+      assert result, "expected compile to succeed with env: and working_dir:"
     end
   end
 
-  def test_invoke_executable_accepts_env_and_working_dir
+  def test_compile_and_link_executable_accepts_env_and_working_dir
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "main.c")
-      obj = File.join(dir, "main.o")
-      exe = File.join(dir, "main")
       File.write(src, "int main(void) { return 0; }\n")
+      obj_ext = builder.toolchain.default_extension(:objects)
+      obj = File.join(dir, "main#{obj_ext}")
+      exe = File.join(dir, "main")
 
-      builder.invoke(src, obj, flags: [:objects])
-      result = builder.invoke([obj], exe, env: {}, working_dir: dir)
+      builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile_and_link([obj], exe, env: {}, working_dir: dir)
 
-      assert result, "expected invoke to succeed with env: and working_dir:"
+      assert result, "expected compile_and_link to succeed with env: and working_dir:"
     end
   end
 
@@ -194,12 +199,11 @@ class DriverTest < Minitest::Test
     Dir.mktmpdir do |dir|
       # Pass a harmless env var; compilation should still succeed.
       src = File.join(dir, "hello.c")
-      obj = File.join(dir, "hello.o")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.invoke(src, obj, flags: [:objects], env: { "MY_BUILD_FLAG" => "1" })
+      result = builder.compile(src, flags: [:objects], env: { "MY_BUILD_FLAG" => "1" }, working_dir: dir)
 
-      assert result, "expected invoke to succeed when env: contains custom vars"
+      assert result, "expected compile to succeed when env: contains custom vars"
     end
   end
 
@@ -207,14 +211,14 @@ class DriverTest < Minitest::Test
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
-      obj = File.join(dir, "hello.o")
       File.write(src, "int main(void) { return 0; }\n")
 
       # Run with working_dir set to the tmp dir; absolute paths still resolve.
-      result = builder.invoke(src, obj, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, flags: [:objects], working_dir: dir)
 
-      assert result, "expected invoke to succeed with working_dir set"
-      assert_path_exists obj, "object file should exist after invoke with working_dir"
+      assert result, "expected compile to succeed with working_dir set"
+      expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
+      assert_path_exists expected_obj, "object file should exist after compile with working_dir"
     end
   end
 
@@ -222,6 +226,8 @@ class DriverTest < Minitest::Test
   # prefer: constructor option
   # ---------------------------------------------------------------------------
   def test_prefer_selects_specified_toolchain_class
+    skip("gcc not available") unless MetaCC::GNU.new.available?
+
     builder = MetaCC::Driver.new(prefer: [MetaCC::GNU])
 
     assert_instance_of MetaCC::GNU, builder.toolchain
@@ -249,6 +255,8 @@ class DriverTest < Minitest::Test
   end
 
   def test_search_paths_finds_compiler_in_custom_dir
+    skip("bash scripts not executable on Windows") if RbConfig::CONFIG["host_os"].match?(/mswin|mingw|cygwin/)
+
     Dir.mktmpdir do |dir|
       # Create a fake gcc script in a custom directory.
       fake_gcc = File.join(dir, "gcc")
@@ -272,141 +280,138 @@ class DriverTest < Minitest::Test
     tc_class = builder.toolchain.class
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
-      obj = File.join(dir, "hello.o")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.invoke(src, obj, flags: [:objects], xflags: { tc_class => [] })
+      result = builder.compile(src, flags: [:objects], xflags: { tc_class => [] }, working_dir: dir)
 
-      assert result, "expected invoke with class-keyed xflags to succeed"
+      assert result, "expected compile with class-keyed xflags to succeed"
     end
   end
 
   # ---------------------------------------------------------------------------
-  # #invoke return value – output path on success, nil on failure
+  # #compile return value – true on success, false on failure
   # ---------------------------------------------------------------------------
-  def test_invoke_returns_output_path_string_on_success
-    builder = MetaCC::Driver.new
-    Dir.mktmpdir do |dir|
-      src = File.join(dir, "hello.c")
-      obj = File.join(dir, "hello.o")
-      File.write(src, "int main(void) { return 0; }\n")
-
-      result = builder.invoke(src, obj, flags: [:objects])
-
-      assert_equal obj, result
-    end
-  end
-
-  def test_invoke_returns_nil_on_failure
-    builder = MetaCC::Driver.new
-    Dir.mktmpdir do |dir|
-      src = File.join(dir, "broken.c")
-      obj = File.join(dir, "broken.o")
-      File.write(src, "this is not valid C code {\n")
-
-      result = builder.invoke(src, obj, flags: [:objects])
-
-      assert_nil result
-    end
-  end
-
-  def test_invoke_returns_output_path_for_executable
-    builder = MetaCC::Driver.new
-    Dir.mktmpdir do |dir|
-      src = File.join(dir, "main.c")
-      obj = File.join(dir, "main.o")
-      exe = File.join(dir, "main")
-      File.write(src, "int main(void) { return 0; }\n")
-
-      builder.invoke(src, obj, flags: [:objects])
-      result = builder.invoke([obj], exe)
-
-      assert_equal exe, result
-    end
-  end
-
-  def test_invoke_returns_nil_for_missing_object
-    builder = MetaCC::Driver.new
-    Dir.mktmpdir do |dir|
-      result = builder.invoke([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
-
-      assert_nil result
-    end
-  end
-
-  # ---------------------------------------------------------------------------
-  # #invoke – nil output_path raises ArgumentError only when :objects is absent
-  # ---------------------------------------------------------------------------
-  def test_invoke_raises_argument_error_when_output_path_is_nil_and_no_objects_flag
-    builder = MetaCC::Driver.new
-
-    assert_raises(ArgumentError) { builder.invoke("hello.c", nil) }
-  end
-
-  def test_invoke_with_nil_output_path_and_objects_flag_does_not_raise
+  def test_compile_returns_true_on_success
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      assert_silent { builder.invoke(src, nil, flags: [:objects], working_dir: dir) }
-    end
-  end
-
-  def test_invoke_with_nil_output_path_and_objects_flag_returns_true_on_success
-    builder = MetaCC::Driver.new
-    Dir.mktmpdir do |dir|
-      src = File.join(dir, "hello.c")
-      File.write(src, "int main(void) { return 0; }\n")
-
-      result = builder.invoke(src, nil, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, flags: [:objects], working_dir: dir)
 
       assert_equal true, result
     end
   end
 
-  def test_invoke_with_nil_output_path_and_objects_flag_returns_nil_on_failure
+  def test_compile_returns_false_on_failure
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "broken.c")
       File.write(src, "this is not valid C code {\n")
 
-      result = builder.invoke(src, nil, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, flags: [:objects], working_dir: dir)
+
+      assert_equal false, result
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # #compile_and_link return value – output path on success, nil on failure
+  # ---------------------------------------------------------------------------
+  def test_compile_and_link_returns_output_path_for_executable
+    builder = MetaCC::Driver.new
+    Dir.mktmpdir do |dir|
+      src = File.join(dir, "main.c")
+      File.write(src, "int main(void) { return 0; }\n")
+      obj_ext = builder.toolchain.default_extension(:objects)
+      obj = File.join(dir, "main#{obj_ext}")
+      exe_ext = builder.toolchain.default_extension(:executable)
+      exe_base = File.join(dir, "main")
+      expected_exe = exe_ext.empty? ? exe_base : "#{exe_base}#{exe_ext}"
+
+      builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile_and_link([obj], exe_base)
+
+      assert_equal expected_exe, result
+    end
+  end
+
+  def test_compile_and_link_returns_nil_for_missing_object
+    builder = MetaCC::Driver.new
+    Dir.mktmpdir do |dir|
+      result = builder.compile_and_link([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
 
       assert_nil result
     end
   end
 
   # ---------------------------------------------------------------------------
-  # #invoke – default extension appended when output_path has no extension
+  # #compile – does not raise when no output path is needed
   # ---------------------------------------------------------------------------
-  def test_invoke_appends_object_extension_when_no_extension_given
+  def test_compile_with_objects_flag_does_not_raise
+    builder = MetaCC::Driver.new
+    Dir.mktmpdir do |dir|
+      src = File.join(dir, "hello.c")
+      File.write(src, "int main(void) { return 0; }\n")
+
+      assert_silent { builder.compile(src, flags: [:objects], working_dir: dir) }
+    end
+  end
+
+  def test_compile_with_objects_flag_returns_true_on_success
+    builder = MetaCC::Driver.new
+    Dir.mktmpdir do |dir|
+      src = File.join(dir, "hello.c")
+      File.write(src, "int main(void) { return 0; }\n")
+
+      result = builder.compile(src, flags: [:objects], working_dir: dir)
+
+      assert_equal true, result
+    end
+  end
+
+  def test_compile_with_objects_flag_returns_false_on_failure
+    builder = MetaCC::Driver.new
+    Dir.mktmpdir do |dir|
+      src = File.join(dir, "broken.c")
+      File.write(src, "this is not valid C code {\n")
+
+      result = builder.compile(src, flags: [:objects], working_dir: dir)
+
+      assert_equal false, result
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # #compile_and_link – default extension appended when output_path has no extension
+  # ---------------------------------------------------------------------------
+  def test_compile_and_link_appends_extension_when_no_extension_given
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
       output_base = File.join(dir, "hello")
       File.write(src, "int main(void) { return 0; }\n")
 
-      expected_ext  = builder.toolchain.default_extension(:objects)
-      expected_path = "#{output_base}#{expected_ext}"
+      expected_ext  = builder.toolchain.default_extension(:executable)
+      expected_path = expected_ext.empty? ? output_base : "#{output_base}#{expected_ext}"
 
-      result = builder.invoke(src, output_base, flags: [:objects])
+      result = builder.compile_and_link(src, output_base)
 
       assert_equal expected_path, result
       assert_path_exists expected_path
     end
   end
 
-  def test_invoke_does_not_modify_output_path_that_already_has_extension
+  def test_compile_and_link_does_not_modify_output_path_that_already_has_extension
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       src = File.join(dir, "hello.c")
-      obj = File.join(dir, "hello.o")
+      exe = File.join(dir, "hello.exe")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.invoke(src, obj, flags: [:objects])
+      result = builder.compile_and_link(src, exe)
 
-      assert_equal obj, result
+      assert_equal exe, result
     end
   end
 
