@@ -103,7 +103,7 @@ class MsvcToolchainTest < Minitest::Test
       vcvarsall_dir = File.join(dir, "VC", "Auxiliary", "Build")
       FileUtils.mkdir_p(vcvarsall_dir)
       vcvarsall_path = File.join(vcvarsall_dir, "vcvarsall.bat")
-      File.write(vcvarsall_path, "REM no_equals_sign\nSET #{env_key}=#{env_value}\n")
+      File.write(vcvarsall_path, "ECHO no_equals_sign\nSET #{env_key}=#{env_value}\n")
 
       devenv_path = File.join(dir, "Common7", "IDE", "devenv.exe")
 
@@ -169,9 +169,6 @@ end
 
 class GnuToolchainCommandTest < Minitest::Test
 
-  # GnuToolchain compile_command and compile_and_link_command are pure methods –
-  # no subprocess calls needed.
-
   def gnu
     Class.new(MetaCC::GNU) do
       def command_available?(_cmd) = true
@@ -183,11 +180,11 @@ class GnuToolchainCommandTest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_libs_produce_dash_l_flags_in_link_mode
-    cmd = gnu.compile_and_link_command(["main.o"], "main",
+    cmds = gnu.compile_and_link_commands(["main.o"], "main",
       flags: [], include_paths: [], defs: [], link_paths: [], libs: %w[m pthread])
 
-    assert_includes cmd, "-lm"
-    assert_includes cmd, "-lpthread"
+    assert_includes cmds.flatten, "-lm"
+    assert_includes cmds.flatten, "-lpthread"
   end
 
   def test_libs_omitted_in_compile_only_mode
@@ -201,11 +198,11 @@ class GnuToolchainCommandTest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_linker_include_dirs_produce_dash_L_flags_in_link_mode
-    cmd = gnu.compile_and_link_command(["main.o"], "main",
+    cmds = gnu.compile_and_link_commands(["main.o"], "main",
       flags: [], include_paths: [], defs: [], link_paths: ["/opt/lib", "/usr/local/lib"], libs: [])
 
-    assert_includes cmd, "-L/opt/lib"
-    assert_includes cmd, "-L/usr/local/lib"
+    assert_includes cmds.flatten, "-L/opt/lib"
+    assert_includes cmds.flatten, "-L/usr/local/lib"
   end
 
   def test_linker_include_dirs_omitted_in_compile_only_mode
@@ -247,11 +244,11 @@ class MsvcToolchainCommandTest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_libs_produce_dot_lib_in_link_mode
-    cmd = msvc.compile_and_link_command(["main.obj"], "main.exe",
+    cmds = msvc.compile_and_link_commands(["main.obj"], "main.exe",
       flags: [], include_paths: [], defs: [], link_paths: [], libs: %w[user32 gdi32])
 
-    assert_includes cmd, "user32.lib"
-    assert_includes cmd, "gdi32.lib"
+    assert_includes cmds.flatten, "user32.lib"
+    assert_includes cmds.flatten, "gdi32.lib"
   end
 
   def test_libs_omitted_in_compile_only_mode
@@ -265,7 +262,7 @@ class MsvcToolchainCommandTest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_linker_include_dirs_produce_libpath_in_link_mode
-    cmd = msvc.compile_and_link_command(["main.obj"], "main.exe",
+    cmd = msvc.compile_and_link_commands(["main.obj"], "main.exe",
       flags: [], include_paths: [], defs: [], link_paths: ["C:\\mylibs"], libs: [])
 
     assert_includes cmd.flatten, "/link"
@@ -280,10 +277,10 @@ class MsvcToolchainCommandTest < Minitest::Test
   end
 
   def test_link_switch_absent_when_no_linker_include_dirs
-    cmd = msvc.compile_and_link_command(["main.obj"], "main.exe",
+    cmds = msvc.compile_and_link_commands(["main.obj"], "main.exe",
       flags: [], include_paths: [], defs: [], link_paths: [], libs: [])
 
-    refute_includes cmd.flatten, "/link"
+    refute_includes cmds.flatten, "/link"
   end
 
   # ---------------------------------------------------------------------------
@@ -357,7 +354,7 @@ class TinyCCToolchainTest < Minitest::Test
   end
 
   # ---------------------------------------------------------------------------
-  # compile_command / compile_and_link_command: structure
+  # compile_command / compile_and_link_commands: structure
   # ---------------------------------------------------------------------------
 
   def test_compile_command_starts_with_tcc
@@ -367,11 +364,11 @@ class TinyCCToolchainTest < Minitest::Test
   end
 
   def test_compile_and_link_command_includes_output_flag
-    cmd = tcc.compile_and_link_command(["main.c"], "main",
-      flags: [], include_paths: [], defs: [], link_paths: [], libs: [])
+    cmds = tcc.compile_and_link_commands(["main.c"], "main",
+      flags: [], include_paths: [], defs: [], link_paths: [], libs: []).flatten
 
-    assert_includes cmd, "-o"
-    assert_equal "main", cmd[cmd.index("-o") + 1]
+    assert_includes cmds, "-o"
+    assert_equal "main", cmds[cmds.index("-o") + 1]
   end
 
   def test_include_paths_produce_dash_I_flags
@@ -391,11 +388,11 @@ class TinyCCToolchainTest < Minitest::Test
   end
 
   def test_libs_produce_dash_l_flags_in_link_mode
-    cmd = tcc.compile_and_link_command(["main.o"], "main",
+    cmd = tcc.compile_and_link_commands(["main.o"], "main",
       flags: [], include_paths: [], defs: [], link_paths: [], libs: %w[m pthread])
 
-    assert_includes cmd, "-lm"
-    assert_includes cmd, "-lpthread"
+    assert_includes cmds.flatten, "-lm"
+    assert_includes cmds.flatten, "-lpthread"
   end
 
   def test_libs_omitted_in_compile_only_mode
@@ -405,10 +402,10 @@ class TinyCCToolchainTest < Minitest::Test
   end
 
   def test_linker_include_dirs_produce_dash_L_flags_in_link_mode
-    cmd = tcc.compile_and_link_command(["main.o"], "main",
+    cmds = tcc.compile_and_link_commands(["main.o"], "main",
       flags: [], include_paths: [], defs: [], link_paths: ["/opt/lib"], libs: [])
 
-    assert_includes cmd, "-L/opt/lib"
+    assert_includes cmds.flatten, "-L/opt/lib"
   end
 
   def test_linker_include_dirs_omitted_in_compile_only_mode
