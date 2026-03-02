@@ -16,7 +16,7 @@ module MetaCC
   #   --std=c++11 --std=c++14 --std=c++17 --std=c++20 --std=c++23 --std=c++26
   #
   # Linking:
-  #   --objects / -c     – compile only; don't link
+  #   -c                 – compile only; don't link
   #   -l, -L             - specify linker input
   #   --shared           – produce a shared library
   #   --static           – produce a static library
@@ -95,10 +95,8 @@ module MetaCC
     def run(argv)
       input_paths, options = parse_compile_args(argv)
       output_path = options.delete(:output_path)
-      link = !options[:flags].include?(:objects)
-      run = !!options.delete(:run)
-      validate_options!(options[:flags], output_path, run)
-      invoke(input_paths, output_path, link:, run:, **options)
+      validate_options!(options[:flags], output_path, link: options[:link], run: options[:run])
+      invoke(input_paths, output_path, **options)
     end
 
     # Parses compile arguments.
@@ -107,6 +105,7 @@ module MetaCC
       options = {
         include_paths: [],
         defs:          [],
+        link:          true,
         link_paths:    [],
         libs:          [],
         output_path:   nil,
@@ -147,8 +146,8 @@ module MetaCC
       parser.on("-W OPTION", "Configure warnings") do |value|
         options[:flags] << WARNING_CONFIGS[value]
       end
-      parser.on("-c", "--objects", "Produce object files") do
-        options[:flags] << :objects
+      parser.on("-c", "Produce object files") do
+        options[:link] = false
       end
       parser.on("-r", "--run", "Run the compiled executable after a successful build") do
         options[:run] = true
@@ -185,23 +184,21 @@ module MetaCC
       end
     end
 
-    def validate_options!(flags, output_path, run_flag)
-      objects = flags.include?(:objects)
-
-      if objects && output_path
-        warn "error: -o cannot be used with --objects"
+    def validate_options!(flags, output_path, link:, run:)
+      if !link && output_path
+        warn "error: cannot specify output path (-o) in compile only mode (-c)"
         exit 1
       end
 
-      unless objects || output_path
-        warn "error: -o is required"
+      if link && !output_path
+        warn "error: must specify an output path (-o)"
         exit 1
       end
 
-      return unless run_flag && (objects || flags.include?(:shared) || flags.include?(:static))
-
-      warn "error: --run cannot be used with --objects, --shared, or --static"
-      exit 1
+      if run && (!link || flags.include?(:shared) || flags.include?(:static))
+        warn "error: --run may not be used with -c, --shared, or --static"
+        exit 1
+      end
     end
 
     def invoke(input_paths, desired_output_path = nil, link: true, run: false, **options)
@@ -210,6 +207,8 @@ module MetaCC
         exit 1 unless actual_output_path
         system(actual_output_path) if run
       else
+        options.delete(:link_paths)
+        options.delete(:libs)
         exit 1 unless @driver.compile(input_paths, **options)
       end
     end

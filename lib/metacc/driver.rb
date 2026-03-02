@@ -22,7 +22,7 @@ module MetaCC
         asan ubsan msan
         no_rtti no_exceptions pic
         no_semantic_interposition no_omit_frame_pointer no_strict_aliasing
-        objects shared static strip
+        shared static strip
       ]
     ).freeze
 
@@ -42,10 +42,8 @@ module MetaCC
       @toolchain = select_toolchain!(prefer, search_paths)
     end
 
-    # Invokes the compiler driver for the given input files and output path.
-    # The kind of output (object files, executable, shared library, or static
-    # library) is determined by the flags: +:objects+, +:shared+, or +:static+.
-    # When none of these mode flags is present, an executable is produced.
+    # Invokes the compiler driver for the given input files and output path,
+    # compiling and producting object files without linking.
     #
     # @param input_files    [String, Array<String>] paths to the input files
     # @param flags          [Array<Symbol>] compiler/linker flags
@@ -57,7 +55,6 @@ module MetaCC
     # @return [String, true, nil] the (possibly extension-augmented) output path on success,
     #   true if output_path was nil and the command succeeded,
     #   nil if the underlying toolchain executable returned a non-zero exit status
-    # @raise [ArgumentError] if output_path is nil and the :objects flag is not present
     def compile(
       input_files,
       flags: [],
@@ -82,8 +79,8 @@ module MetaCC
 
     # Invokes the compiler driver for the given input files and output path.
     # The kind of output (object files, executable, shared library, or static
-    # library) is determined by the flags: +:objects+, +:shared+, or +:static+.
-    # When none of these mode flags is present, an executable is produced.
+    # library) is determined by the flags: +:shared+ or +:static+. When none of
+    # these mode flags is present, an executable is produced.
     #
     # @param input_files    [String, Array<String>] paths to the input files
     # @param output_path    [String] path for the resulting output file
@@ -98,7 +95,6 @@ module MetaCC
     # @return [String, true, nil] the (possibly extension-augmented) output path on success,
     #   true if output_path was nil and the command succeeded,
     #   nil if the underlying toolchain executable returned a non-zero exit status
-    # @raise [ArgumentError] if output_path is nil and the :objects flag is not present
     def compile_and_link(
       input_files,
       output_path,
@@ -111,7 +107,10 @@ module MetaCC
       env: {},
       working_dir: "."
     )
-      output_type = output_type_from_flags(flags)
+      output_type = if flags.include?(:shared)  then :shared
+                    elsif flags.include?(:static)  then :static
+                    else :executable
+                    end
       output_path = apply_default_extension(output_path, output_type)
 
       flags = translate_flags(flags)
@@ -138,14 +137,6 @@ module MetaCC
         return toolchain if toolchain.available?
       end
       raise CompilerNotFoundError, "No supported C/C++ compiler found (tried clang, gcc, cl)"
-    end
-
-    def output_type_from_flags(flags)
-      if flags.include?(:objects)    then :objects
-      elsif flags.include?(:shared)  then :shared
-      elsif flags.include?(:static)  then :static
-      else :executable
-      end
     end
 
     def apply_default_extension(path, output_type)

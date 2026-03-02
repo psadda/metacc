@@ -130,7 +130,7 @@ module MetaCC
     )
       inc_flags = include_paths.map { |p| "-I#{p}" }
       def_flags = defs.map { |d| "-D#{d}" }
-      [c, *flags, *inc_flags, *def_flags, *input_files]
+      [c, "-c", *flags, *inc_flags, *def_flags, *input_files]
     end
 
     def compile_and_link_command(
@@ -182,7 +182,6 @@ module MetaCC
       no_semantic_interposition: ["-fno-semantic-interposition"],
       no_omit_frame_pointer:     ["-fno-omit-frame-pointer"],
       no_strict_aliasing:        ["-fno-strict-aliasing"],
-      objects:                   ["-c"],
       shared:                    ["-shared"],
       static:                    ["-static"],
       strip:                     ["-Wl,--strip-unneeded"]
@@ -234,7 +233,7 @@ module MetaCC
     )
       inc_flags = include_paths.map { |p| "/I#{p}" }
       def_flags = defs.map { |d| "/D#{d}" }
-      [c, *flags, *inc_flags, *def_flags, *input_files]
+      [c, "/c", *flags, *inc_flags, *def_flags, *input_files]
     end
 
     def compile_and_link_command(
@@ -288,7 +287,6 @@ module MetaCC
       no_semantic_interposition: [],
       no_omit_frame_pointer:     ["/Oy-"],
       no_strict_aliasing:        [],
-      objects:                   ["/c"],
       shared:                    ["/LD"],
       static:                    ["/c"],
       strip:                     []
@@ -441,7 +439,7 @@ module MetaCC
     )
       inc_flags = include_paths.map { |p| "-I#{p}" }
       def_flags = defs.map { |d| "-D#{d}" }
-      [c, *flags, *inc_flags, *def_flags, *input_files]
+      [c, "-c", *flags, *inc_flags, *def_flags, *input_files]
     end
 
     def compile_and_link_command(
@@ -497,7 +495,6 @@ module MetaCC
       no_semantic_interposition: [],
       no_omit_frame_pointer:     [],
       no_strict_aliasing:        [],
-      objects:                   ["-c"],
       shared:                    ["-shared"],
       static:                    ["-c", "-static"],
       strip:                     []

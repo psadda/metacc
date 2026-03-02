@@ -44,7 +44,7 @@ class DriverTest < Minitest::Test
   end
 
   # ---------------------------------------------------------------------------
-  # #compile – compile to object files (objects flag)
+  # #compile – compile to object files
   # ---------------------------------------------------------------------------
   def test_compile_c_source_returns_true_and_creates_object_file
     builder = MetaCC::Driver.new
@@ -52,7 +52,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, working_dir: dir)
 
       assert result, "expected compile to return true"
       expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
@@ -66,7 +66,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.cpp")
       File.write(src, "int main() { return 0; }\n")
 
-      result = builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, working_dir: dir)
 
       assert result, "expected compile to return true"
       expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
@@ -86,7 +86,6 @@ class DriverTest < Minitest::Test
 
       result = builder.compile(
         src,
-        flags:         [:objects],
         include_paths: [inc_dir],
         defs:          ["UNUSED=1"],
         working_dir:   dir
@@ -104,7 +103,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "broken.c")
       File.write(src, "this is not valid C code {\n")
 
-      result = builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, working_dir: dir)
 
       refute result, "expected compile to return false for invalid source"
     end
@@ -122,7 +121,7 @@ class DriverTest < Minitest::Test
       obj = File.join(dir, "main#{obj_ext}")
       exe = File.join(dir, "main")
 
-      builder.compile(src, flags: [:objects], working_dir: dir)
+      builder.compile(src, working_dir: dir)
       result = builder.compile_and_link([obj], exe)
 
       assert result, "expected compile_and_link to return truthy"
@@ -155,7 +154,7 @@ class DriverTest < Minitest::Test
       obj = File.join(dir, "util#{obj_ext}")
       lib = File.join(dir, "libutil.so")
 
-      builder.compile(src, flags: %i[objects pic], working_dir: dir)
+      builder.compile(src, flags: %i[pic], working_dir: dir)
       result = builder.compile_and_link([obj], lib, flags: [:shared])
 
       assert result, "expected compile_and_link to return truthy"
@@ -172,7 +171,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, flags: [:objects], env: {}, working_dir: dir)
+      result = builder.compile(src, env: {}, working_dir: dir)
 
       assert result, "expected compile to succeed with env: and working_dir:"
     end
@@ -187,7 +186,7 @@ class DriverTest < Minitest::Test
       obj = File.join(dir, "main#{obj_ext}")
       exe = File.join(dir, "main")
 
-      builder.compile(src, flags: [:objects], working_dir: dir)
+      builder.compile(src, working_dir: dir)
       result = builder.compile_and_link([obj], exe, env: {}, working_dir: dir)
 
       assert result, "expected compile_and_link to succeed with env: and working_dir:"
@@ -201,7 +200,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, flags: [:objects], env: { "MY_BUILD_FLAG" => "1" }, working_dir: dir)
+      result = builder.compile(src, env: { "MY_BUILD_FLAG" => "1" }, working_dir: dir)
 
       assert result, "expected compile to succeed when env: contains custom vars"
     end
@@ -214,7 +213,7 @@ class DriverTest < Minitest::Test
       File.write(src, "int main(void) { return 0; }\n")
 
       # Run with working_dir set to the tmp dir; absolute paths still resolve.
-      result = builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, working_dir: dir)
 
       assert result, "expected compile to succeed with working_dir set"
       expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
@@ -282,7 +281,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, flags: [:objects], xflags: { tc_class => [] }, working_dir: dir)
+      result = builder.compile(src, xflags: { tc_class => [] }, working_dir: dir)
 
       assert result, "expected compile with class-keyed xflags to succeed"
     end
@@ -297,7 +296,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, working_dir: dir)
 
       assert_equal true, result
     end
@@ -309,7 +308,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "broken.c")
       File.write(src, "this is not valid C code {\n")
 
-      result = builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, working_dir: dir)
 
       assert_equal false, result
     end
@@ -329,7 +328,7 @@ class DriverTest < Minitest::Test
       exe_base = File.join(dir, "main")
       expected_exe = exe_ext.empty? ? exe_base : "#{exe_base}#{exe_ext}"
 
-      builder.compile(src, flags: [:objects], working_dir: dir)
+      builder.compile(src, working_dir: dir)
       result = builder.compile_and_link([obj], exe_base)
 
       assert_equal expected_exe, result
@@ -354,7 +353,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      assert_silent { builder.compile(src, flags: [:objects], working_dir: dir) }
+      assert_silent { builder.compile(src, working_dir: dir) }
     end
   end
 
@@ -364,7 +363,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "hello.c")
       File.write(src, "int main(void) { return 0; }\n")
 
-      result = builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, working_dir: dir)
 
       assert_equal true, result
     end
@@ -376,7 +375,7 @@ class DriverTest < Minitest::Test
       src = File.join(dir, "broken.c")
       File.write(src, "this is not valid C code {\n")
 
-      result = builder.compile(src, flags: [:objects], working_dir: dir)
+      result = builder.compile(src, working_dir: dir)
 
       assert_equal false, result
     end
