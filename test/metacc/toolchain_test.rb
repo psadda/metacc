@@ -255,8 +255,8 @@ class GnuToolchainCommandTest < Minitest::Test
     assert_equal ["-fsanitize=address,undefined,leak"], MetaCC::GNU::GNU_FLAGS[:sanitize_default]
   end
 
-  def test_sanitize_memory_flag_maps_to_fsanitize_memory
-    assert_equal ["-fsanitize=memory"], MetaCC::GNU::GNU_FLAGS[:sanitize_memory]
+  def test_sanitize_memory_flag_maps_to_fsanitize_nothing
+    assert_empty MetaCC::GNU::GNU_FLAGS[:sanitize_memory]
   end
 
   def test_sanitize_thread_flag_maps_to_fsanitize_thread

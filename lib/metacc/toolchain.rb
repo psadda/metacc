@@ -174,7 +174,7 @@ module MetaCC
       cxx23:                 ["-std=c++23"],
       cxx26:                 ["-std=c++2c"],
       sanitize_default:      ["-fsanitize=address,undefined,leak"],
-      sanitize_memory:       ["-fsanitize=memory"],
+      sanitize_memory:       [],
       sanitize_thread:       ["-fsanitize=thread"],
       no_rtti:               ["-fno-rtti"],
       no_exceptions:         ["-fno-exceptions", "-fno-unwind-tables"],
@@ -211,7 +211,10 @@ module MetaCC
       super("clang", search_paths:)
     end
 
-    CLANG_FLAGS = GNU_FLAGS.merge(lto: ["-flto=thin"]).freeze
+    CLANG_FLAGS = GNU_FLAGS.merge(
+      lto: ["-flto=thin"],
+      sanitize_memory: ["-fsanitize=memory"]
+    ).freeze
 
     def flags
       CLANG_FLAGS
