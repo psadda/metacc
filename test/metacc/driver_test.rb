@@ -416,11 +416,26 @@ class DriverFlagTranslationTest < Minitest::Test
   end
 
   # ---------------------------------------------------------------------------
-  # OPTIMIZATION_FLAGS constant
+  # Flag category constants
   # ---------------------------------------------------------------------------
 
   def test_optimization_flags_constant_contains_all_levels
     assert_equal Set.new(%i[o0 o1 o2 o3 os]), MetaCC::Driver::OPTIMIZATION_FLAGS
+  end
+
+  def test_language_std_flags_constant_contains_all_standards
+    expected = Set.new(%i[c11 c17 c23 cxx11 cxx14 cxx17 cxx20 cxx23 cxx26])
+    assert_equal expected, MetaCC::Driver::LANGUAGE_STD_FLAGS
+  end
+
+  def test_architecture_flags_constant_contains_all_targets
+    expected = Set.new(%i[sse4_2 avx avx2 avx512 native])
+    assert_equal expected, MetaCC::Driver::ARCHITECTURE_FLAGS
+  end
+
+  def test_dbg_sanitize_flags_constant_contains_all_sanitizers
+    expected = Set.new(%i[sanitize_default sanitize_memory sanitize_thread])
+    assert_equal expected, MetaCC::Driver::DBG_SANITIZE_FLAGS
   end
 
   # ---------------------------------------------------------------------------
@@ -444,6 +459,78 @@ class DriverFlagTranslationTest < Minitest::Test
     cmd_with_single_flag = d.last_cmd.dup
 
     d.compile("main.c", flags: [:o3, :o0])
+    assert_equal cmd_with_single_flag, d.last_cmd
+  end
+
+  # ---------------------------------------------------------------------------
+  # Multiple language standard flags – last one wins
+  # ---------------------------------------------------------------------------
+
+  def test_last_language_std_flag_wins_when_multiple_given
+    d = driver
+
+    d.compile("main.c", flags: [:c17])
+    cmd_with_single_flag = d.last_cmd.dup
+
+    d.compile("main.c", flags: [:c11, :c17])
+    assert_equal cmd_with_single_flag, d.last_cmd
+  end
+
+  def test_earlier_language_std_flags_are_dropped
+    d = driver
+
+    d.compile("main.c", flags: [:c23])
+    cmd_with_single_flag = d.last_cmd.dup
+
+    d.compile("main.c", flags: [:c11, :c17, :c23])
+    assert_equal cmd_with_single_flag, d.last_cmd
+  end
+
+  # ---------------------------------------------------------------------------
+  # Multiple architecture flags – last one wins
+  # ---------------------------------------------------------------------------
+
+  def test_last_architecture_flag_wins_when_multiple_given
+    d = driver
+
+    d.compile("main.c", flags: [:avx2])
+    cmd_with_single_flag = d.last_cmd.dup
+
+    d.compile("main.c", flags: [:sse4_2, :avx2])
+    assert_equal cmd_with_single_flag, d.last_cmd
+  end
+
+  def test_earlier_architecture_flags_are_dropped
+    d = driver
+
+    d.compile("main.c", flags: [:avx512])
+    cmd_with_single_flag = d.last_cmd.dup
+
+    d.compile("main.c", flags: [:avx, :avx2, :avx512])
+    assert_equal cmd_with_single_flag, d.last_cmd
+  end
+
+  # ---------------------------------------------------------------------------
+  # Multiple sanitizer flags – last one wins
+  # ---------------------------------------------------------------------------
+
+  def test_last_sanitizer_flag_wins_when_multiple_given
+    d = driver
+
+    d.compile("main.c", flags: [:sanitize_thread])
+    cmd_with_single_flag = d.last_cmd.dup
+
+    d.compile("main.c", flags: [:sanitize_default, :sanitize_thread])
+    assert_equal cmd_with_single_flag, d.last_cmd
+  end
+
+  def test_earlier_sanitizer_flags_are_dropped
+    d = driver
+
+    d.compile("main.c", flags: [:sanitize_thread])
+    cmd_with_single_flag = d.last_cmd.dup
+
+    d.compile("main.c", flags: [:sanitize_default, :sanitize_memory, :sanitize_thread])
     assert_equal cmd_with_single_flag, d.last_cmd
   end
 

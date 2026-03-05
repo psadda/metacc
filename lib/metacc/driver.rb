@@ -15,22 +15,24 @@ module MetaCC
   # available compiler found on the system (Clang, GCC, or MSVC).
   class Driver
 
-    RECOGNIZED_FLAGS = Set.new(
-      %i[
+    LANGUAGE_STD_FLAGS = Set.new(%i[c11 c17 c23 cxx11 cxx14 cxx17 cxx20 cxx23 cxx26]).freeze
+    ARCHITECTURE_FLAGS = Set.new(%i[sse4_2 avx avx2 avx512 native]).freeze
+    OPTIMIZATION_FLAGS = Set.new(%i[o0 o1 o2 o3 os]).freeze
+    DBG_SANITIZE_FLAGS = Set.new(%i[sanitize_default sanitize_memory sanitize_thread]).freeze
+
+    ALL_FLAGS = Set.new([
+      *%i[
         warn_all warn_error
-        c11 c17 c23
-        cxx11 cxx14 cxx17 cxx20 cxx23 cxx26
-        o0 o1 o2 o3 os lto
-        sse4_2 avx avx2 avx512 native
-        sanitize_default sanitize_memory sanitize_thread
         debug_info
         omit_frame_pointer strict_aliasing
         no_rtti no_exceptions
         pic shared shared_compat static strip
-      ]
-    ).freeze
-
-    OPTIMIZATION_FLAGS = Set.new(%i[o0 o1 o2 o3 os]).freeze
+      ],
+      *LANGUAGE_STD_FLAGS,
+      *ARCHITECTURE_FLAGS,
+      *OPTIMIZATION_FLAGS,
+      *DBG_SANITIZE_FLAGS
+    ]).freeze
 
     # The detected toolchain (a Toolchain subclass instance).
     attr_reader :toolchain
@@ -157,13 +159,20 @@ module MetaCC
     end
 
     def translate_flags(flags)
-      unrecognized_flag = flags.find { |flag| !RECOGNIZED_FLAGS.include?(flag) }
+      unrecognized_flag = flags.find { |flag| !ALL_FLAGS.include?(flag) }
       if unrecognized_flag
         raise "#{unrecognized_flag.inspect} is not a known flag"
       end
 
-      opt_flags, flags = flags.partition { |flag| OPTIMIZATION_FLAGS.include?(flag) }
-      flags << opt_flags.last unless opt_flags.empty?
+      lang_flags, flags = flags.partition { |flag| LANGUAGE_STD_FLAGS.include?(flag) }
+      arch_flags, flags = flags.partition { |flag| ARCHITECTURE_FLAGS.include?(flag) }
+      optm_flags, flags = flags.partition { |flag| OPTIMIZATION_FLAGS.include?(flag) }
+      sant_flags, flags = flags.partition { |flag| DBG_SANITIZE_FLAGS.include?(flag) }
+
+      flags << lang_flags.last unless lang_flags.empty?
+      flags << arch_flags.last unless arch_flags.empty?
+      flags << optm_flags.last unless optm_flags.empty?
+      flags << sant_flags.last unless sant_flags.empty?
 
       flags << :no_omit_frame_pointer unless flags.include?(:omit_frame_pointer)
       flags << :no_strict_aliasing unless flags.include?(:strict_aliasing)
