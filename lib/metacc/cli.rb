@@ -17,13 +17,9 @@ module MetaCC
     }
 
     SANITIZERS = {
-      "address" =>   :asan,
-      "addr" =>      :asan,
-      "undefined" => :ubsan,
-      "ub" =>        :ubsan,
-      "memory" =>    :msan,
-      "mem" =>       :msan,
-      "leak" =>      :lsan
+      nil =>      :sanitize_default,
+      "memory" => :sanitize_memory,
+      "thread" => :sanitize_thread,
     }
 
     TARGETS = {
@@ -119,7 +115,13 @@ module MetaCC
       parser.on("-g", "--debug-info", "Emit debugging symbols") do
         options[:flags] << :debug_info
       end
-      parser.on("-S", "--sanitize SANITIZER", "Enable sanitizer (address, undefined, leak, memory)") do |value|
+      parser.on(
+        "-S", "--sanitize=[SANITIZER]",
+        "Enable sanitizer(s)",
+        "  --sanitize        => address, undefined, leak",
+        "  --sanitize=memory => memory",
+        "  --sanitize=thread => thread",
+      ) do |value|
         options[:flags] << SANITIZERS[value]
       end
 

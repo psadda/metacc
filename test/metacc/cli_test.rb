@@ -153,7 +153,7 @@ class CLITest < Minitest::Test
   end
 
   # ---------------------------------------------------------------------------
-  # LONG_FLAGS (--lto, --asan, --ubsan, --msan, --no-rtti, --no-exceptions, --pic)
+  # LONG_FLAGS (--lto, --no-rtti, --no-exceptions, --pic)
   # ---------------------------------------------------------------------------
 
   def test_all_long_flags_forwarded
@@ -174,14 +174,31 @@ class CLITest < Minitest::Test
   end
 
   # ---------------------------------------------------------------------------
-  # Sanitizer flags (-S, --sanitize)
+  # Sanitizer flags (-S, --sanitize=[SANITIZER])
   # ---------------------------------------------------------------------------
 
-  def test_sanitizer_short_flag
-    # stub = run_cli(["-c", "main.c"])
+  def test_sanitize_long_flag_no_arg_produces_sanitize_default_flag
+    call = last_compile_and_link_call(run_cli(["--sanitize", "-o", "out", "main.c"]))
 
-    # assert last_compile_call(stub)
-    # refute last_compile_and_link_call(stub)
+    assert_includes call[:flags], :sanitize_default
+  end
+
+  def test_sanitize_short_flag_no_arg_produces_sanitize_default_flag
+    call = last_compile_and_link_call(run_cli(["-S", "-o", "out", "main.c"]))
+
+    assert_includes call[:flags], :sanitize_default
+  end
+
+  def test_sanitize_memory_arg_produces_sanitize_memory_flag
+    call = last_compile_and_link_call(run_cli(["--sanitize=memory", "-o", "out", "main.c"]))
+
+    assert_includes call[:flags], :sanitize_memory
+  end
+
+  def test_sanitize_thread_arg_produces_sanitize_thread_flag
+    call = last_compile_and_link_call(run_cli(["--sanitize=thread", "-o", "out", "main.c"]))
+
+    assert_includes call[:flags], :sanitize_thread
   end
 
   # ---------------------------------------------------------------------------

@@ -173,10 +173,9 @@ module MetaCC
       cxx20:                 ["-std=c++20"],
       cxx23:                 ["-std=c++23"],
       cxx26:                 ["-std=c++2c"],
-      asan:                  ["-fsanitize=address"],
-      ubsan:                 ["-fsanitize=undefined"],
-      msan:                  ["-fsanitize=memory"],
-      lsan:                  ["-fsanitize=leak"],
+      sanitize_default:      ["-fsanitize=address,undefined,leak"],
+      sanitize_memory:       ["-fsanitize=memory"],
+      sanitize_thread:       ["-fsanitize=thread"],
       no_rtti:               ["-fno-rtti"],
       no_exceptions:         ["-fno-exceptions", "-fno-unwind-tables"],
       pic:                   ["-fPIC"],
@@ -289,10 +288,9 @@ module MetaCC
       cxx20:                 ["/std:c++20"],
       cxx23:                 ["/std:c++23preview"],
       cxx26:                 ["/std:c++latest"],
-      asan:                  ["/fsanitize=address"],
-      ubsan:                 [],
-      msan:                  [],
-      lsan:                  [],
+      sanitize_default:      ["/fsanitize=address"],
+      sanitize_memory:       [],
+      sanitize_thread:       [],
       no_rtti:               ["/GR-"],
       no_exceptions:         ["/EHs-", "/EHc-"],
       pic:                   [],
@@ -407,9 +405,10 @@ module MetaCC
     end
 
     CLANG_CL_FLAGS = MSVC_FLAGS.merge(
+      lto:                ["-flto=thin"],
       o3:                 ["/Ot"],       # Clang-CL treats /Ot as -O3
-      lto:                ["-flto=thin"]
-      strict_aliasing:    ["/clang:-fstrict-aliasing"]
+      native:             ["/clang:-march=native", "/clang:-mtune=native"],
+      strict_aliasing:    ["/clang:-fstrict-aliasing"],
       no_strict_aliasing: ["/clang:-fno-strict-aliasing"]
     ).freeze
 

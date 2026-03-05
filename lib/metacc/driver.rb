@@ -22,7 +22,7 @@ module MetaCC
         cxx11 cxx14 cxx17 cxx20 cxx23 cxx26
         o0 o1 o2 o3 os lto
         sse4_2 avx avx2 avx512 native
-        asan ubsan msan lsan
+        sanitize_default sanitize_memory sanitize_thread
         debug_info
         omit_frame_pointer strict_aliasing
         no_rtti no_exceptions
