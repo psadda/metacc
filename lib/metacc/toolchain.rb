@@ -114,7 +114,7 @@ module MetaCC
 
   end
 
-  # GNU-compatible toolchain (gcc).
+  # Base class for GNU compatible (ish) toolchains
   class GNU < Toolchain
 
     def initialize(cc_command = "gcc", search_paths: [])
@@ -190,6 +190,14 @@ module MetaCC
       strip:                 ["-Wl,--strip-unneeded"],
       debug:                 ["-D_GLIBCXX_DEBUG", "-fasynchronous-unwind-tables"]
     }.freeze
+
+  end
+
+  class GCC < GNU
+
+    def initialize(search_paths: [])
+      super("gcc", search_paths:)
+    end
 
     def flags
       GNU_FLAGS
