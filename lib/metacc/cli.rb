@@ -73,6 +73,7 @@ module MetaCC
         libs:          [],
         output_path:   nil,
         run:           false,
+        dry_run:       false,
         flags:         [],
         xflags:        {}
       }
@@ -107,6 +108,9 @@ module MetaCC
       end
       parser.on("-r", "--run", "Run the compiled executable after a successful build") do
         options[:run] = true
+      end
+      parser.on("--dry-run", "Print the command that would be issued") do
+        options[:dry_run] = true
       end
 
       parser.separator ""
@@ -178,7 +182,6 @@ module MetaCC
       parser.on("-L DIR", "Add linker library search path") do |value|
         options[:link_paths] << value
       end
-
       parser.on("-s", "--strip", "Strip unneeded symbols") do
         options[:flags] << :strip
       end
@@ -230,13 +233,17 @@ module MetaCC
     end
 
     def invoke(input_paths, desired_output_path = nil, link: true, run: false, **options)
+      result = nil
       if link
-        actual_output_path = @driver.compile_and_link(input_paths, desired_output_path, **options)
-        system(actual_output_path) if run
+        result = @driver.compile_and_link(input_paths, desired_output_path, **options)
+        system(result) if run && !options[:dry_run]
       else
         options.delete(:link_paths)
         options.delete(:libs)
-        @driver.compile(input_paths, **options)
+        result = @driver.compile(input_paths, **options)
+      end
+      if options[:dry_run]
+        puts result.map { |cmd| cmd.join(" ") }
       end
     end
 

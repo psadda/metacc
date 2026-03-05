@@ -65,7 +65,8 @@ module MetaCC
       include_paths: [],
       defs: [],
       env: {},
-      working_dir: "."
+      working_dir: ".",
+      dry_run: false
     )
       flags = translate_flags(flags)
       flags.concat(xflags[@toolchain.class] || [])
@@ -76,6 +77,8 @@ module MetaCC
         include_paths:,
         defs:
       )
+
+      return [cmd] if dry_run
 
       !!run_command(cmd, env:, working_dir:)
     end
@@ -107,7 +110,8 @@ module MetaCC
       link_paths: [],
       libs: [],
       env: {},
-      working_dir: "."
+      working_dir: ".",
+      dry_run: false
     )
       output_type = if flags.include?(:shared)  then :shared
                     elsif flags.include?(:static)  then :static
@@ -127,6 +131,8 @@ module MetaCC
         libs:,
         link_paths:
       )
+
+      return cmds if dry_run
 
       cmds.each { |cmd| run_command(cmd, env:, working_dir:) }
       output_path
