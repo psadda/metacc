@@ -86,8 +86,6 @@ module MetaCC
     private
 
     def setup_compile_options(parser, options)
-      parser.require_exact = true
-
       parser.separator ""
       parser.separator "General options:"
 
