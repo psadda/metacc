@@ -30,6 +30,8 @@ module MetaCC
       ]
     ).freeze
 
+    OPTIMIZATION_FLAGS = Set.new(%i[o0 o1 o2 o3 os]).freeze
+
     # The detected toolchain (a Toolchain subclass instance).
     attr_reader :toolchain
 
@@ -153,6 +155,9 @@ module MetaCC
       if unrecognized_flag
         raise "#{unrecognized_flag.inspect} is not a known flag"
       end
+
+      opt_flags, flags = flags.partition { |flag| OPTIMIZATION_FLAGS.include?(flag) }
+      flags << opt_flags.last unless opt_flags.empty?
 
       flags << :no_omit_frame_pointer unless flags.include?(:omit_frame_pointer)
       flags << :no_strict_aliasing unless flags.include?(:strict_aliasing)
