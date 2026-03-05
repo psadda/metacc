@@ -19,12 +19,12 @@ class CLITest < Minitest::Test
 
     def compile(input_files, **options)
       @last_compile_call = { input_files:, **options }
-      true
+      options[:dry_run] ? [["stub-compiler", *input_files]] : true
     end
 
     def compile_and_link(input_files, output_file, **options)
       @last_compile_and_link_call = { input_files:, output_file:, **options }
-      output_file
+      options[:dry_run] ? [["stub-compiler", *input_files, "-o", output_file]] : output_file
     end
 
   end
@@ -189,14 +189,26 @@ class CLITest < Minitest::Test
     assert_includes call[:flags], :sanitize_default
   end
 
-  def test_sanitize_memory_arg_produces_sanitize_memory_flag
+  def test_sanitize_long_flag_memory_arg_produces_sanitize_memory_flag
     call = last_compile_and_link_call(run_cli(["--sanitize=memory", "-o", "out", "main.c"]))
+
+    assert_includes call[:flags], :sanitize_memory
+  end
+
+  def test_sanitize_short_flag_memory_arg_produces_sanitize_default_flag
+    call = last_compile_and_link_call(run_cli(["-Smemory", "-o", "out", "main.c"]))
 
     assert_includes call[:flags], :sanitize_memory
   end
 
   def test_sanitize_thread_arg_produces_sanitize_thread_flag
     call = last_compile_and_link_call(run_cli(["--sanitize=thread", "-o", "out", "main.c"]))
+
+    assert_includes call[:flags], :sanitize_thread
+  end
+
+  def test_sanitize_short_flag_thread_arg_produces_sanitize_default_flag
+    call = last_compile_and_link_call(run_cli(["-Sthread", "-o", "out", "main.c"]))
 
     assert_includes call[:flags], :sanitize_thread
   end
@@ -410,6 +422,55 @@ class CLITest < Minitest::Test
 
   def test_run_with_static_throws
     assert_raises(OptionParser::InvalidOption) { run_cli(["-r", "--static", "-o", "lib.a", "main.c"]) }
+  end
+
+  # ---------------------------------------------------------------------------
+  # --dry-run flag
+  # ---------------------------------------------------------------------------
+
+  def test_dry_run_flag_forwarded_to_driver
+    call = last_compile_and_link_call(run_cli(["--dry-run", "-o", "out", "main.c"]))
+
+    assert_equal true, call[:dry_run]
+  end
+
+  def test_dry_run_false_by_default
+    call = last_compile_and_link_call(run_cli(["-o", "out", "main.c"]))
+
+    assert_equal false, call[:dry_run]
+  end
+
+  def test_dry_run_prints_compile_and_link_commands_to_stdout
+    out, = capture_io do
+      MetaCC::CLI.new(driver: StubDriver.new).run(["--dry-run", "-o", "out", "main.c"])
+    end
+
+    assert_includes out, "stub-compiler"
+    assert_includes out, "main.c"
+  end
+
+  def test_dry_run_prints_compile_only_commands_to_stdout
+    out, = capture_io do
+      MetaCC::CLI.new(driver: StubDriver.new).run(["--dry-run", "-c", "main.c"])
+    end
+
+    assert_includes out, "stub-compiler"
+    assert_includes out, "main.c"
+  end
+
+  def test_dry_run_suppresses_run_flag_execution
+    stub = StubDriver.new
+    cli = SpyCLI.new(driver: stub)
+    cli.run(["--dry-run", "--run", "-o", "out", "main.c"])
+
+    assert_nil cli.executed_path
+  end
+
+  def test_dry_run_forwarded_in_compile_only_mode
+    stub = run_cli(["--dry-run", "-c", "main.c"])
+    call = last_compile_call(stub)
+
+    assert_equal true, call[:dry_run]
   end
 
   # ---------------------------------------------------------------------------
