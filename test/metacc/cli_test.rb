@@ -79,7 +79,7 @@ class CLITest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_run_missing_output_exits
-    assert_raises(MetaCC::CLI::InvalidOption) { run_cli(["a.c"]) }
+    assert_raises(OptionParser::InvalidOption) { run_cli(["a.c"]) }
   end
 
   # ---------------------------------------------------------------------------
@@ -365,11 +365,11 @@ class CLITest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_missing_output_path_throws
-    assert_raises(MetaCC::CLI::InvalidOption) { run_cli(["main.c"]) }
+    assert_raises(OptionParser::InvalidOption) { run_cli(["main.c"]) }
   end
 
   def test_output_path_with_objects_throws
-    assert_raises(MetaCC::CLI::InvalidOption) { run_cli(["-c", "-o", "main.o", "main.c"]) }
+    assert_raises(OptionParser::InvalidOption) { run_cli(["-c", "-o", "main.o", "main.c"]) }
   end
 
   # ---------------------------------------------------------------------------
@@ -401,15 +401,15 @@ class CLITest < Minitest::Test
   end
 
   def test_run_with_objects_throws
-    assert_raises(MetaCC::CLI::InvalidOption) { run_cli(["-r", "-c", "main.c"]) }
+    assert_raises(OptionParser::InvalidOption) { run_cli(["-r", "-c", "main.c"]) }
   end
 
   def test_run_with_shared_throws
-    assert_raises(MetaCC::CLI::InvalidOption) { run_cli(["-r", "--shared", "-o", "lib.so", "main.c"]) }
+    assert_raises(OptionParser::InvalidOption) { run_cli(["-r", "--shared", "-o", "lib.so", "main.c"]) }
   end
 
   def test_run_with_static_throws
-    assert_raises(MetaCC::CLI::InvalidOption) { run_cli(["-r", "--static", "-o", "lib.a", "main.c"]) }
+    assert_raises(OptionParser::InvalidOption) { run_cli(["-r", "--static", "-o", "lib.a", "main.c"]) }
   end
 
   # ---------------------------------------------------------------------------

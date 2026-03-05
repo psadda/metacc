@@ -79,18 +79,27 @@ class MsvcToolchainTest < Minitest::Test
     env_value = "METACC_TEST_VALUE_#{SecureRandom.hex(8)}"
 
     Dir.mktmpdir do |dir|
+      # Compute path to temporary vcvarsall.bat
       vcvarsall_dir = File.join(dir, "VC", "Auxiliary", "Build")
       FileUtils.mkdir_p(vcvarsall_dir)
       vcvarsall_path = File.join(vcvarsall_dir, "vcvarsall.bat")
+
+      # Write out a batch file to that path
       File.write(vcvarsall_path, "SET #{env_key}=#{env_value}\n")
 
+      # Compute path to temporary devenv.exe
+      # (The file doesn't actually have to exist for this test)
       devenv_path = File.join(dir, "Common7", "IDE", "devenv.exe")
 
       begin
+        # Clear out DevEnvDir temporarily (because MSVC.vcvarsall
+        # short-circuits when DevEnvDir is defined)
+        dev_env_dir = ENV.delete("DevEnvDir")
         MetaCC::MSVC.vcvarsall(devenv_path)
         assert_equal env_value, ENV.fetch(env_key, nil)
       ensure
         ENV.delete(env_key)
+        ENV["DevEnvDir"] = dev_env_dir
       end
     end
   end
@@ -100,19 +109,28 @@ class MsvcToolchainTest < Minitest::Test
     env_value = "METACC_TEST_VALUE_#{SecureRandom.hex(8)}"
 
     Dir.mktmpdir do |dir|
+      # Compute path to temporary vcvarsall.bat
       vcvarsall_dir = File.join(dir, "VC", "Auxiliary", "Build")
       FileUtils.mkdir_p(vcvarsall_dir)
       vcvarsall_path = File.join(vcvarsall_dir, "vcvarsall.bat")
+
+      # Write out a batch file to that path
       File.write(vcvarsall_path, "ECHO no_equals_sign\nSET #{env_key}=#{env_value}\n")
 
+      # Compute path to temporary devenv.exe
+      # (The file doesn't actually have to exist for this test)
       devenv_path = File.join(dir, "Common7", "IDE", "devenv.exe")
 
       begin
+        # Clear out DevEnvDir temporarily (because MSVC.vcvarsall
+        # short-circuits when DevEnvDir is defined)
+        dev_env_dir = ENV.delete("DevEnvDir")
         MetaCC::MSVC.vcvarsall(devenv_path)
         assert_equal env_value, ENV.fetch(env_key, nil)
         refute ENV.key?("no_equals_sign")
       ensure
         ENV.delete(env_key)
+        ENV["DevEnvDir"] = dev_env_dir
       end
     end
   end
@@ -229,6 +247,22 @@ class GnuToolchainCommandTest < Minitest::Test
     assert_equal ["-Wl,--strip-unneeded"], MetaCC::GNU::GNU_FLAGS[:strip]
   end
 
+  # ---------------------------------------------------------------------------
+  # sanitizer flags
+  # ---------------------------------------------------------------------------
+
+  def test_sanitize_default_flag_maps_to_address_undefined_leak
+    assert_equal ["-fsanitize=address,undefined,leak"], MetaCC::GNU::GNU_FLAGS[:sanitize_default]
+  end
+
+  def test_sanitize_memory_flag_maps_to_fsanitize_memory
+    assert_equal ["-fsanitize=memory"], MetaCC::GNU::GNU_FLAGS[:sanitize_memory]
+  end
+
+  def test_sanitize_thread_flag_maps_to_fsanitize_thread
+    assert_equal ["-fsanitize=thread"], MetaCC::GNU::GNU_FLAGS[:sanitize_thread]
+  end
+
 end
 
 class MsvcToolchainCommandTest < Minitest::Test
@@ -289,6 +323,22 @@ class MsvcToolchainCommandTest < Minitest::Test
 
   def test_strip_flag_maps_to_empty_array
     assert_equal [], MetaCC::MSVC::MSVC_FLAGS[:strip]
+  end
+
+  # ---------------------------------------------------------------------------
+  # sanitizer flags
+  # ---------------------------------------------------------------------------
+
+  def test_sanitize_default_flag_maps_to_fsanitize_address
+    assert_equal ["/fsanitize=address"], MetaCC::MSVC::MSVC_FLAGS[:sanitize_default]
+  end
+
+  def test_sanitize_memory_flag_maps_to_empty_array
+    assert_equal [], MetaCC::MSVC::MSVC_FLAGS[:sanitize_memory]
+  end
+
+  def test_sanitize_thread_flag_maps_to_empty_array
+    assert_equal [], MetaCC::MSVC::MSVC_FLAGS[:sanitize_thread]
   end
 
 end

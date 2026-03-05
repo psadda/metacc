@@ -395,3 +395,56 @@ class DriverTest < Minitest::Test
   end
 
 end
+
+class DriverFlagTranslationTest < Minitest::Test
+
+  # A Driver subclass that captures the compiler command produced by
+  # translate_flags without invoking a real subprocess.  The real
+  # auto-detected toolchain is used so flag → string translation is accurate.
+  class SpyDriver < MetaCC::Driver
+
+    attr_reader :last_cmd
+
+    private
+
+    def run_command(cmd, **) = @last_cmd = cmd
+
+  end
+
+  def driver
+    SpyDriver.new
+  end
+
+  # ---------------------------------------------------------------------------
+  # OPTIMIZATION_FLAGS constant
+  # ---------------------------------------------------------------------------
+
+  def test_optimization_flags_constant_contains_all_levels
+    assert_equal Set.new(%i[o0 o1 o2 o3 os]), MetaCC::Driver::OPTIMIZATION_FLAGS
+  end
+
+  # ---------------------------------------------------------------------------
+  # Multiple optimization flags – last one wins
+  # ---------------------------------------------------------------------------
+
+  def test_last_optimization_flag_wins_when_multiple_given
+    d = driver
+
+    d.compile("main.c", flags: [:o3])
+    cmd_with_single_flag = d.last_cmd.dup
+
+    d.compile("main.c", flags: [:o1, :o3])
+    assert_equal cmd_with_single_flag, d.last_cmd
+  end
+
+  def test_earlier_optimization_flags_are_dropped
+    d = driver
+
+    d.compile("main.c", flags: [:o0])
+    cmd_with_single_flag = d.last_cmd.dup
+
+    d.compile("main.c", flags: [:o3, :o0])
+    assert_equal cmd_with_single_flag, d.last_cmd
+  end
+
+end
