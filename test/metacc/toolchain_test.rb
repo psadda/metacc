@@ -2,6 +2,7 @@
 
 require "test_helper"
 require "securerandom"
+require "rbconfig"
 require "tmpdir"
 require "fileutils"
 require "metacc/toolchain"
@@ -75,6 +76,9 @@ class MsvcToolchainTest < Minitest::Test
   # ---------------------------------------------------------------------------
 
   def test_vcvarsall_updates_environment_from_vcvarsall_bat
+    # Only run this test on windows
+    return unless RbConfig::CONFIG["host_os"].match?(/mswin/)
+
     env_key = "METACC_TEST_#{SecureRandom.hex(8)}"
     env_value = "METACC_TEST_VALUE_#{SecureRandom.hex(8)}"
 
@@ -105,6 +109,9 @@ class MsvcToolchainTest < Minitest::Test
   end
 
   def test_vcvarsall_skips_lines_without_equals
+    # Only run this test on windows
+    return unless RbConfig::CONFIG["host_os"].match?(/mswin/)
+
     env_key = "METACC_TEST_#{SecureRandom.hex(8)}"
     env_value = "METACC_TEST_VALUE_#{SecureRandom.hex(8)}"
 
