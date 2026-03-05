@@ -103,7 +103,11 @@ module MetaCC
       parser.on("--std=STANDARD", "Specify the language standard") do |value|
         options[:flags] << STANDARDS[value]
       end
-      parser.on("-W OPTION", "Configure warnings") do |value|
+      parser.on(
+        "-W OPTION", "Configure warnings",
+        "  -Wall   => Enable a broad range of warnings",
+        "  -Werror => Treat warnings as errrs"
+      ) do |value|
         options[:flags] << WARNING_CONFIGS[value]
       end
       parser.on("-r", "--run", "Run the compiled executable after a successful build") do
