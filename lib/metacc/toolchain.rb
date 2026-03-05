@@ -372,7 +372,7 @@ module MetaCC
     # environment variables into the current process's ENV.
     def MSVC.vcvarsall(devenv_path)
       # See https://stackoverflow.com/a/19929778
-      return if ENV.has_key?("DevEnvDir")
+      return if ENV.key?("DevEnvDir")
 
       # Calculate the location of vcvarsall.bat
       install_root = File.expand_path("../../..", devenv_path)
@@ -445,42 +445,43 @@ module MetaCC
     end
 
     TINYCC_FLAGS = {
-      o0:                 [],
-      o1:                 ["-O1"],
-      o2:                 ["-O2"],
-      o3:                 ["-O2"],
-      os:                 [],
-      sse4_2:             [],
-      avx:                [],
-      avx2:               [],
-      avx512:             [],
-      native:             [],
-      debug_info:         ["-g"],
-      lto:                [],
-      warn_all:           ["-Wall"],
-      warn_error:         ["-Werror"],
-      c11:                [],
-      c17:                [],
-      c23:                [],
-      cxx11:              [],
-      cxx14:              [],
-      cxx17:              [],
-      cxx20:              [],
-      cxx23:              [],
-      cxx26:              [],
-      asan:               [],
-      ubsan:              [],
-      msan:               [],
-      leak:               [],
-      no_rtti:            [],
-      no_exceptions:      [],
-      pic:                [],
-      keep_frame_pointer: [],
-      relaxed_aliasing:   [],
-      shared:             ["-shared"],
-      shared_compat:      ["-shared"],
-      static:             ["-c"],
-      strip:              []
+      o0:                    [],
+      o1:                    ["-O1"],
+      o2:                    ["-O2"],
+      o3:                    ["-O2"],
+      os:                    [],
+      sse4_2:                [],
+      avx:                   [],
+      avx2:                  [],
+      avx512:                [],
+      native:                [],
+      debug_info:            ["-g"],
+      lto:                   [],
+      warn_all:              ["-Wall"],
+      warn_error:            ["-Werror"],
+      c11:                   [],
+      c17:                   [],
+      c23:                   [],
+      cxx11:                 [],
+      cxx14:                 [],
+      cxx17:                 [],
+      cxx20:                 [],
+      cxx23:                 [],
+      cxx26:                 [],
+      sanitize_default:      [],
+      sanitize_memory:       [],
+      sanitize_thread:       [],
+      no_rtti:               [],
+      no_exceptions:         [],
+      pic:                   [],
+      omit_frame_pointer:    [],
+      no_omit_frame_pointer: [],
+      strict_aliasing:       [],
+      no_strict_aliasing:    [],
+      shared:                ["-shared"],
+      shared_compat:         ["-shared"],
+      static:                ["-c"],
+      strip:                 []
     }.freeze
 
     def flags
