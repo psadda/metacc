@@ -214,8 +214,16 @@ module MetaCC
         raise OptionParser::InvalidOption, "must specify an output path (-o)"
       end
 
-      if run && (!link || flags.include?(:shared) || flags.include?(:static))
-        raise OptionParser::InvalidOption, "--run may not be used with -c, --shared, or --static"
+      if run && (!link || %i[static shared shared_compat].any? { |f| flags.include?(f) })
+        raise OptionParser::InvalidOption, "--run cannot be used with -c, --static, --shared, or --shared-compat"
+      end
+
+      if !link && %i[static shared shared_compat].any? { |f| flags.include?(f) }
+        raise OptionParser::InvalidOption, "compile only mode (-c) cannot be used with --static, --shared, or --shared-compat"
+      end
+
+      if flags.include?(:debug_info) && flags.include?(:strip)
+        raise OptionParser::InvalidOption, "--debug-info (-g) cannot be combined with --strip (-s)"
       end
     end
 

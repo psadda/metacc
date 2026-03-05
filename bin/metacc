@@ -7,8 +7,7 @@ require "metacc/cli"
 
 begin
   MetaCC::CLI.new.run(ARGV)
-rescue MetaCC::CLI::InvalidOption,
-       MetaCC::ToolchainNotFoundError,
+rescue MetaCC::ToolchainNotFoundError,
        OptionParser::AmbiguousOption,
        OptionParser::MissingArgument,
        OptionParser::NeedlessArgument,
