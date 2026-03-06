@@ -2,7 +2,6 @@
 
 require "test_helper"
 require "securerandom"
-require "rbconfig"
 require "tmpdir"
 require "fileutils"
 require "metacc/toolchain"
@@ -258,16 +257,28 @@ class GnuToolchainCommandTest < Minitest::Test
   # sanitizer flags
   # ---------------------------------------------------------------------------
 
-  def test_sanitize_default_flag_maps_to_address_undefined_leak
-    assert_equal ["-fsanitize=address,undefined,leak"], MetaCC::GNU::GNU_FLAGS[:sanitize_default]
+  def test_sanitize_default_flag_is_platform_appropriate
+    expected = if MetaCC::Platform.windows?
+                 ["-fsanitize=undefined", "-fsanitize-undefined-trap-on-error"]
+               elsif MetaCC::Platform.apple?
+                 []
+               else
+                 ["-fsanitize=address,undefined,leak"]
+               end
+    assert_equal expected, MetaCC::GNU::GNU_FLAGS[:sanitize_default]
   end
 
   def test_sanitize_memory_flag_maps_to_fsanitize_nothing
     assert_empty MetaCC::GNU::GNU_FLAGS[:sanitize_memory]
   end
 
-  def test_sanitize_thread_flag_maps_to_fsanitize_thread
-    assert_equal ["-fsanitize=thread"], MetaCC::GNU::GNU_FLAGS[:sanitize_thread]
+  def test_sanitize_thread_flag_is_platform_appropriate
+    expected = if MetaCC::Platform.windows? || MetaCC::Platform.apple?
+                 []
+               else
+                 ["-fsanitize=thread"]
+               end
+    assert_equal expected, MetaCC::GNU::GNU_FLAGS[:sanitize_thread]
   end
 
 end

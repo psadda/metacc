@@ -141,6 +141,30 @@ module MetaCC
       [[c, *flags, *inc_flags, *def_flags, *input_files, *lib_path_flags, *lib_flags, "-o", output_file]]
     end
 
+    def self.platform_flags
+      if MetaCC::Platform.windows?
+        {
+          # MingGW doesn't have full UBsan support, but it can trap on detected errors.
+          # It does not support the address or leak sanitizers.
+          sanitize_default: ["-fsanitize=undefined", "-fsanitize-undefined-trap-on-error"],
+          # MingGW doesn't support the thread sanitizer
+          sanitize_thread: []
+        }
+      elsif MetaCC::Platform.apple?
+        # gcc's support for sanitizers on OSX/iOS is *very* spotty.
+        # So we disable everything.
+        {
+          sanitize_default: [],
+          sanitize_thread: []
+        }
+      else
+        # Otherwise assume Linux/BSD and keep the default
+        {}
+      end
+    end
+
+    private_class_method :platform_flags
+
     GNU_FLAGS = {
       o0:                    ["-O0"],
       o1:                    ["-O1"],
@@ -180,7 +204,7 @@ module MetaCC
       static:                ["-static"],
       strip:                 ["-Wl,--strip-unneeded"],
       debug:                 ["-D_GLIBCXX_DEBUG", "-fasynchronous-unwind-tables"]
-    }.freeze
+    }.merge(platform_flags).freeze
 
   end
 
@@ -203,26 +227,26 @@ module MetaCC
       super("clang", search_paths:)
     end
 
-    def self.build_clang_flags
+    def self.platform_flags
       if MetaCC::Platform.windows?
-        GNU_FLAGS.merge(
-          lto: ["-flto=thin"],
+        {
           # The leak sanitizer is not supported on Windows
           sanitize_default: ["-fsanitize=address,undefined"],
           # The thread sanitizer is not supported on Windows
-          sanitize_thread: []
-        ).freeze
+          sanitize_thread:  []
+        }
       else
-        GNU_FLAGS.merge(
-          lto: ["-flto=thin"],
-          sanitize_memory: ["-fsanitize=memory"]
-        ).freeze
+        # For all other platforms, stick with the defaults
+        {}
       end
     end
 
-    private_class_method :build_clang_flags
+    private_class_method :platform_flags
 
-    CLANG_FLAGS = build_clang_flags
+    CLANG_FLAGS = GNU_FLAGS.merge(
+                    lto: ["-flto=thin"],
+                    sanitize_memory: ["-fsanitize=memory"] 
+                  ).merge(platform_flags)
 
     def flags
       CLANG_FLAGS
