@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-require "rbconfig"
+require "tempfile"
+require_relative "platform"
 
 module MetaCC
 
@@ -76,20 +77,11 @@ module MetaCC
     # @param output_type [:objects, :shared, :static, :executable]
     # @return [String]
     def default_extension(output_type)
-      host_os = RbConfig::CONFIG["host_os"]
       case output_type
       when :objects    then ".o"
-      when :static     then ".a"
-      when :shared
-        if host_os.match?(/mswin|mingw|cygwin/)
-          ".dll"
-        elsif host_os.match?(/darwin/)
-          ".dylib"
-        else
-          ".so"
-        end
-      when :executable
-        host_os.match?(/mswin|mingw|cygwin/) ? ".exe" : ""
+      when :static     then ".a" # MingGW uses .a, not .lib
+      when :shared     then MetaCC::Platform.shared_library_ext
+      when :executable then MetaCC::Platform.executable_ext
       else
         raise ArgumentError, "unknown output_type: #{output_type.inspect}"
       end
@@ -211,10 +203,26 @@ module MetaCC
       super("clang", search_paths:)
     end
 
-    CLANG_FLAGS = GNU_FLAGS.merge(
-      lto: ["-flto=thin"],
-      sanitize_memory: ["-fsanitize=memory"]
-    ).freeze
+    def self.build_clang_flags
+      if MetaCC::Platform.windows?
+        GNU_FLAGS.merge(
+          lto: ["-flto=thin"],
+          # The leak sanitizer is not supported on Windows
+          sanitize_default: ["-fsanitize=address,undefined"],
+          # The thread sanitizer is not supported on Windows
+          sanitize_thread: []
+        ).freeze
+      else
+        GNU_FLAGS.merge(
+          lto: ["-flto=thin"],
+          sanitize_memory: ["-fsanitize=memory"]
+        ).freeze
+      end
+    end
+
+    private_class_method :build_clang_flags
+
+    CLANG_FLAGS = build_clang_flags
 
     def flags
       CLANG_FLAGS
