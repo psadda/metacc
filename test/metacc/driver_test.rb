@@ -61,7 +61,7 @@ class DriverTest < Minitest::Test
     end
   end
 
-  def test_compile_with_include_paths_and_defs
+  def test_compile_with_include_dirs_and_defs
     builder = MetaCC::Driver.new
     Dir.mktmpdir do |dir|
       inc_dir = File.join(dir, "include")
@@ -73,9 +73,9 @@ class DriverTest < Minitest::Test
 
       builder.compile(
         src,
-        include_paths: [inc_dir],
-        defs:          ["UNUSED=1"],
-        working_dir:   dir
+        include_dirs: [inc_dir],
+        defs:         ["UNUSED=1"],
+        working_dir:  dir
       )
 
       expected_obj = File.join(dir, "main#{builder.toolchain.default_extension(:objects)}")

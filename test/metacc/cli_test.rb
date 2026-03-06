@@ -108,16 +108,16 @@ class CLITest < Minitest::Test
   # Include paths (-I)
   # ---------------------------------------------------------------------------
 
-  def test_single_include_path
+  def test_single_include_dir
     call = last_compile_and_link_call(run_cli(["-I", "/usr/include", "-o", "out", "main.c"]))
 
-    assert_equal ["/usr/include"], call[:include_paths]
+    assert_equal ["/usr/include"], call[:include_dirs]
   end
 
-  def test_multiple_include_paths
+  def test_multiple_include_dirs
     call = last_compile_and_link_call(run_cli(["-I", "/a", "-I", "/b", "-o", "out", "main.c"]))
 
-    assert_equal ["/a", "/b"], call[:include_paths]
+    assert_equal ["/a", "/b"], call[:include_dirs]
   end
 
   # ---------------------------------------------------------------------------
@@ -283,21 +283,21 @@ class CLITest < Minitest::Test
   def test_libdir_flag
     call = last_compile_and_link_call(run_cli(["-L", "/usr/local/lib", "-o", "out", "main.c"]))
 
-    assert_equal ["/usr/local/lib"], call[:link_paths]
+    assert_equal ["/usr/local/lib"], call[:link_dirs]
   end
 
   def test_libs_and_libdirs_default_to_empty
     call = last_compile_and_link_call(run_cli(["-o", "out", "main.c"]))
 
     assert_equal [], call[:libs]
-    assert_equal [], call[:link_paths]
+    assert_equal [], call[:link_dirs]
   end
 
-  def test_libs_and_link_paths_forwarded_together
+  def test_libs_and_link_dirs_forwarded_together
     call = last_compile_and_link_call(run_cli(["--shared", "-o", "lib.so", "-l", "m", "-L", "/opt/lib", "main.c"]))
 
     assert_equal ["m"],        call[:libs]
-    assert_equal ["/opt/lib"], call[:link_paths]
+    assert_equal ["/opt/lib"], call[:link_dirs]
   end
 
   # ---------------------------------------------------------------------------
@@ -354,7 +354,7 @@ class CLITest < Minitest::Test
     refute last_compile_and_link_call(stub)
     assert_equal ["main.c"],  call[:input_files]
     assert_nil                call[:output]
-    assert_equal ["/inc"],    call[:include_paths]
+    assert_equal ["/inc"],    call[:include_dirs]
     assert_equal ["FOO=1"],   call[:defs]
     assert_includes call[:flags], :lto
     assert_includes call[:flags], :debug_info
@@ -368,7 +368,7 @@ class CLITest < Minitest::Test
     assert_equal ["foo.cpp", "bar.cpp"], call[:input_files]
     assert_equal "libfoo.so",            call[:output_file]
     assert_equal ["stdc++"],             call[:libs]
-    assert_equal ["/usr/lib"],           call[:link_paths]
+    assert_equal ["/usr/lib"],           call[:link_dirs]
     assert_includes call[:flags], :shared
     assert_includes call[:flags], :pic
   end

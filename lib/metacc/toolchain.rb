@@ -52,7 +52,7 @@ module MetaCC
     def compile_command(
       input_files,
       flags:,
-      include_paths:,
+      include_dirs:,
       defs:
     )
       raise "#{self.class}#command not implemented"
@@ -62,9 +62,9 @@ module MetaCC
       input_files,
       output_file,
       flags:,
-      include_paths:,
+      include_dirs:,
       defs:,
-      link_paths:,
+      link_dirs:,
       libs:
     )
       raise "#{self.class}#command not implemented"
@@ -117,10 +117,10 @@ module MetaCC
     def compile_command(
       input_files,
       flags:,
-      include_paths:,
+      include_dirs:,
       defs:
     )
-      inc_flags = include_paths.map { |p| "-I#{p}" }
+      inc_flags = include_dirs.map { |p| "-I#{p}" }
       def_flags = defs.map { |d| "-D#{d}" }
       [c, "-c", *flags, *inc_flags, *def_flags, *input_files]
     end
@@ -129,14 +129,14 @@ module MetaCC
       input_files,
       output_file,
       flags:,
-      include_paths:,
+      include_dirs:,
       defs:,
-      link_paths:,
+      link_dirs:,
       libs:
     )
-      inc_flags = include_paths.map { |p| "-I#{p}" }
+      inc_flags = include_dirs.map { |p| "-I#{p}" }
       def_flags = defs.map { |d| "-D#{d}" }
-      lib_path_flags = link_paths.map { |p| "-L#{p}" }
+      lib_path_flags = link_dirs.map { |p| "-L#{p}" }
       lib_flags      = libs.map { |l| "-l#{l}" }
       [[c, *flags, *inc_flags, *def_flags, *input_files, *lib_path_flags, *lib_flags, "-o", output_file]]
     end
@@ -273,10 +273,10 @@ module MetaCC
     def compile_command(
       input_files,
       flags:,
-      include_paths:,
+      include_dirs:,
       defs:
     )
-      inc_flags = include_paths.map { |p| "/I#{p}" }
+      inc_flags = include_dirs.map { |p| "/I#{p}" }
       def_flags = defs.map { |d| "/D#{d}" }
       [c, "/c", *flags, *inc_flags, *def_flags, *input_files]
     end
@@ -285,15 +285,15 @@ module MetaCC
       input_files,
       output_file,
       flags:,
-      include_paths:,
+      include_dirs:,
       defs:,
-      link_paths:,
+      link_dirs:,
       libs:
     )
-      inc_flags = include_paths.map { |p| "/I#{p}" }
+      inc_flags = include_dirs.map { |p| "/I#{p}" }
       def_flags = defs.map { |d| "/D#{d}" }
       lib_flags      = libs.map { |l| "#{l}.lib" }
-      lib_path_flags = link_paths.map { |p| "/LIBPATH:#{p}" }
+      lib_path_flags = link_dirs.map { |p| "/LIBPATH:#{p}" }
       cmd = [c, *flags, *inc_flags, *def_flags, *input_files, *lib_flags, "/Fe#{output_file}"]
       cmd += ["/link", *lib_path_flags] unless lib_path_flags.empty?
       [cmd]

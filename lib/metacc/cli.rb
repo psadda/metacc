@@ -66,16 +66,16 @@ module MetaCC
     # Returns [positional_args, options_hash].
     def parse_compile_args(argv)
       options = {
-        include_paths: [],
-        defs:          [],
-        link:          true,
-        link_paths:    [],
-        libs:          [],
-        output_path:   nil,
-        run:           false,
-        dry_run:       false,
-        flags:         [],
-        xflags:        {}
+        include_dirs: [],
+        defs:         [],
+        link:         true,
+        link_dirs:    [],
+        libs:         [],
+        output_path:  nil,
+        run:          false,
+        dry_run:      false,
+        flags:        [],
+        xflags:       {}
       }
       parser = OptionParser.new
       setup_compile_options(parser, options)
@@ -95,7 +95,7 @@ module MetaCC
         options[:output_path] = value
       end
       parser.on("-I DIRPATH", "Add an include search directory") do |value|
-        options[:include_paths] << value
+        options[:include_dirs] << value
       end
       parser.on("-D DEF", "Add a preprocessor definition") do |value|
         options[:defs] << value
@@ -184,7 +184,7 @@ module MetaCC
         options[:libs] << value
       end
       parser.on("-L DIR", "Add linker library search path") do |value|
-        options[:link_paths] << value
+        options[:link_dirs] << value
       end
       parser.on("-s", "--strip", "Strip unneeded symbols") do
         options[:flags] << :strip
@@ -243,7 +243,7 @@ module MetaCC
         result = @driver.compile_and_link(input_paths, desired_output_path, **options)
         system(result) if run && !options[:dry_run]
       else
-        options.delete(:link_paths)
+        options.delete(:link_dirs)
         options.delete(:libs)
         result = @driver.compile(input_paths, **options)
       end

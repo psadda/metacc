@@ -62,13 +62,13 @@ module MetaCC
     # @raise [CompileError] if the underlying toolchain executable returns a non-zero exit status
     def compile(
       input_files,
-      flags: [],
-      xflags: {},
-      include_paths: [],
-      defs: [],
-      env: {},
-      working_dir: ".",
-      dry_run: false
+      flags:        [],
+      xflags:       {},
+      include_dirs: [],
+      defs:         [],
+      env:          {},
+      working_dir:  ".",
+      dry_run:      false
     )
       flags = translate_flags(flags)
       flags.concat(xflags[@toolchain.class] || [])
@@ -76,7 +76,7 @@ module MetaCC
       cmd = @toolchain.compile_command(
         input_files,
         flags:,
-        include_paths:,
+        include_dirs:,
         defs:
       )
 
@@ -105,15 +105,15 @@ module MetaCC
     def compile_and_link(
       input_files,
       output_path,
-      flags:         [],
-      xflags:        {},
-      include_paths: [],
-      defs:          [],
-      link_paths:    [],
-      libs:          [],
-      env:           {},
-      working_dir:   ".",
-      dry_run:       false
+      flags:        [],
+      xflags:       {},
+      include_dirs: [],
+      defs:         [],
+      link_dirs:    [],
+      libs:         [],
+      env:          {},
+      working_dir:  ".",
+      dry_run:      false
     )
       output_type = if flags.include?(:shared) then :shared
                     elsif flags.include?(:static) then :static
@@ -128,10 +128,10 @@ module MetaCC
         input_files,
         output_path,
         flags:,
-        include_paths:,
+        include_dirs:,
         defs:,
         libs:,
-        link_paths:
+        link_dirs:
       )
 
       return cmds if dry_run
