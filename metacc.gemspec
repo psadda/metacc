@@ -24,5 +24,5 @@ Gem::Specification.new do |spec|
   spec.executables   = ["metacc"]
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = ">= 3.3.0"
+  spec.required_ruby_version = ">= 3.4.0"
 end
