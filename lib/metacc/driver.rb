@@ -105,18 +105,18 @@ module MetaCC
     def compile_and_link(
       input_files,
       output_path,
-      flags: [],
-      xflags: {},
+      flags:         [],
+      xflags:        {},
       include_paths: [],
-      defs: [],
-      link_paths: [],
-      libs: [],
-      env: {},
-      working_dir: ".",
-      dry_run: false
+      defs:          [],
+      link_paths:    [],
+      libs:          [],
+      env:           {},
+      working_dir:   ".",
+      dry_run:       false
     )
-      output_type = if flags.include?(:shared)  then :shared
-                    elsif flags.include?(:static)  then :static
+      output_type = if flags.include?(:shared) then :shared
+                    elsif flags.include?(:static) then :static
                     else :executable
                     end
       output_path = apply_default_extension(output_path, output_type)

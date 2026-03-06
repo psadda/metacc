@@ -158,7 +158,7 @@ class CLITest < Minitest::Test
 
   def test_all_long_flags_forwarded
     %i[lto no_rtti no_exceptions pic].each do |name|
-      cli_name = name.to_s.tr("_", '-')
+      cli_name = name.to_s.tr("_", "-")
       call = last_compile_and_link_call(run_cli(["--#{cli_name}", "-o", "out", "main.c"]))
 
       assert_includes call[:flags], name, "--#{cli_name} should forward :#{name} to driver"
@@ -247,6 +247,7 @@ class CLITest < Minitest::Test
 
   def test_link_executable_by_default
     call = last_compile_and_link_call(run_cli(["-o", "out", "main.c"]))
+
     assert call
     refute_includes call[:flags], :static
     refute_includes call[:flags], :shared

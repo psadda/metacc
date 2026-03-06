@@ -42,6 +42,7 @@ class DriverTest < Minitest::Test
       builder.compile(src, working_dir: dir)
 
       expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
+
       assert_path_exists expected_obj, "expected object file to be created"
     end
   end
@@ -55,6 +56,7 @@ class DriverTest < Minitest::Test
       builder.compile(src, working_dir: dir)
 
       expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
+
       assert_path_exists expected_obj, "expected object file to be created"
     end
   end
@@ -77,6 +79,7 @@ class DriverTest < Minitest::Test
       )
 
       expected_obj = File.join(dir, "main#{builder.toolchain.default_extension(:objects)}")
+
       assert_path_exists expected_obj, "expected object file to be created"
     end
   end
@@ -113,6 +116,7 @@ class DriverTest < Minitest::Test
 
   def test_compile_and_link_executable_missing_object_raises_compile_error
     builder = MetaCC::Driver.new
+
     Dir.mktmpdir do |dir|
       assert_raises(MetaCC::CompileError) do
         builder.compile_and_link([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
@@ -200,6 +204,7 @@ class DriverTest < Minitest::Test
       builder.compile(src, working_dir: dir)
 
       expected_obj = File.join(dir, "hello#{builder.toolchain.default_extension(:objects)}")
+
       assert_path_exists expected_obj, "object file should exist after compile with working_dir"
     end
   end
@@ -319,6 +324,7 @@ class DriverTest < Minitest::Test
 
   def test_compile_and_link_raises_compile_error_for_missing_object
     builder = MetaCC::Driver.new
+
     Dir.mktmpdir do |dir|
       assert_raises(MetaCC::CompileError) do
         builder.compile_and_link([File.join(dir, "nonexistent.o")], File.join(dir, "out"))
@@ -425,16 +431,19 @@ class DriverFlagTranslationTest < Minitest::Test
 
   def test_language_std_flags_constant_contains_all_standards
     expected = Set.new(%i[c11 c17 c23 cxx11 cxx14 cxx17 cxx20 cxx23 cxx26])
+
     assert_equal expected, MetaCC::Driver::LANGUAGE_STD_FLAGS
   end
 
   def test_architecture_flags_constant_contains_all_targets
     expected = Set.new(%i[sse4_2 avx avx2 avx512 native])
+
     assert_equal expected, MetaCC::Driver::ARCHITECTURE_FLAGS
   end
 
   def test_dbg_sanitize_flags_constant_contains_all_sanitizers
     expected = Set.new(%i[sanitize_default sanitize_memory sanitize_thread])
+
     assert_equal expected, MetaCC::Driver::DBG_SANITIZE_FLAGS
   end
 
@@ -448,7 +457,8 @@ class DriverFlagTranslationTest < Minitest::Test
     d.compile("main.c", flags: [:o3])
     cmd_with_single_flag = d.last_cmd.dup
 
-    d.compile("main.c", flags: [:o1, :o3])
+    d.compile("main.c", flags: %i[o1 o3])
+
     assert_equal cmd_with_single_flag, d.last_cmd
   end
 
@@ -458,7 +468,8 @@ class DriverFlagTranslationTest < Minitest::Test
     d.compile("main.c", flags: [:o0])
     cmd_with_single_flag = d.last_cmd.dup
 
-    d.compile("main.c", flags: [:o3, :o0])
+    d.compile("main.c", flags: %i[o3 o0])
+
     assert_equal cmd_with_single_flag, d.last_cmd
   end
 
@@ -472,7 +483,8 @@ class DriverFlagTranslationTest < Minitest::Test
     d.compile("main.c", flags: [:c17])
     cmd_with_single_flag = d.last_cmd.dup
 
-    d.compile("main.c", flags: [:c11, :c17])
+    d.compile("main.c", flags: %i[c11 c17])
+
     assert_equal cmd_with_single_flag, d.last_cmd
   end
 
@@ -482,7 +494,8 @@ class DriverFlagTranslationTest < Minitest::Test
     d.compile("main.c", flags: [:c23])
     cmd_with_single_flag = d.last_cmd.dup
 
-    d.compile("main.c", flags: [:c11, :c17, :c23])
+    d.compile("main.c", flags: %i[c11 c17 c23])
+
     assert_equal cmd_with_single_flag, d.last_cmd
   end
 
@@ -496,7 +509,8 @@ class DriverFlagTranslationTest < Minitest::Test
     d.compile("main.c", flags: [:avx2])
     cmd_with_single_flag = d.last_cmd.dup
 
-    d.compile("main.c", flags: [:sse4_2, :avx2])
+    d.compile("main.c", flags: %i[sse4_2 avx2])
+
     assert_equal cmd_with_single_flag, d.last_cmd
   end
 
@@ -506,7 +520,8 @@ class DriverFlagTranslationTest < Minitest::Test
     d.compile("main.c", flags: [:avx512])
     cmd_with_single_flag = d.last_cmd.dup
 
-    d.compile("main.c", flags: [:avx, :avx2, :avx512])
+    d.compile("main.c", flags: %i[avx avx2 avx512])
+
     assert_equal cmd_with_single_flag, d.last_cmd
   end
 
@@ -520,7 +535,8 @@ class DriverFlagTranslationTest < Minitest::Test
     d.compile("main.c", flags: [:sanitize_thread])
     cmd_with_single_flag = d.last_cmd.dup
 
-    d.compile("main.c", flags: [:sanitize_default, :sanitize_thread])
+    d.compile("main.c", flags: %i[sanitize_default sanitize_thread])
+
     assert_equal cmd_with_single_flag, d.last_cmd
   end
 
@@ -530,7 +546,8 @@ class DriverFlagTranslationTest < Minitest::Test
     d.compile("main.c", flags: [:sanitize_thread])
     cmd_with_single_flag = d.last_cmd.dup
 
-    d.compile("main.c", flags: [:sanitize_default, :sanitize_memory, :sanitize_thread])
+    d.compile("main.c", flags: %i[sanitize_default sanitize_memory sanitize_thread])
+
     assert_equal cmd_with_single_flag, d.last_cmd
   end
 

@@ -381,7 +381,7 @@ module MetaCC
     #
     # Parses the output of `vcvarsall.bat … && set` and merges the resulting
     # environment variables into the current process's ENV.
-    def MSVC.vcvarsall(devenv_path)
+    def self.vcvarsall(devenv_path)
       # See https://stackoverflow.com/a/19929778
       return if ENV.key?("DevEnvDir")
 
@@ -438,7 +438,7 @@ module MetaCC
     end
 
     def compile_and_link_commands(input_files, output_file, **options)
-      commands = super(input_files, output_file, **options)
+      commands = super
       if options[:flags].include?(:static)
         object_files = input_files.map { |f| f.sub(/\.c\z/, ".o") }
         commands << [@ar, "rcs", output_file, *object_files]

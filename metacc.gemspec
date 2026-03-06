@@ -13,7 +13,7 @@ Gem::Specification.new do |spec|
     metacc provides a small set of classes for invoking C/C++ build tools, abstracting
     away differences between compilers.
   DESC
-  spec.homepage = "https://github.com/psadda/metacc"
+  spec.homepage      = "https://github.com/psadda/metacc"
   spec.license       = "BSD-3-Clause"
 
   spec.metadata["homepage_uri"] = spec.homepage

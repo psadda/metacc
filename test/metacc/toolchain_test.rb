@@ -77,7 +77,7 @@ class MsvcToolchainTest < Minitest::Test
 
   def test_vcvarsall_updates_environment_from_vcvarsall_bat
     # Only run this test on windows
-    return unless RbConfig::CONFIG["host_os"].match?(/mswin/)
+    skip unless MetaCC::Platform.windows?
 
     env_key = "METACC_TEST_#{SecureRandom.hex(8)}"
     env_value = "METACC_TEST_VALUE_#{SecureRandom.hex(8)}"
@@ -100,6 +100,7 @@ class MsvcToolchainTest < Minitest::Test
         # short-circuits when DevEnvDir is defined)
         dev_env_dir = ENV.delete("DevEnvDir")
         MetaCC::MSVC.vcvarsall(devenv_path)
+
         assert_equal env_value, ENV.fetch(env_key, nil)
       ensure
         ENV.delete(env_key)
@@ -110,7 +111,7 @@ class MsvcToolchainTest < Minitest::Test
 
   def test_vcvarsall_skips_lines_without_equals
     # Only run this test on windows
-    return unless RbConfig::CONFIG["host_os"].match?(/mswin/)
+    skip unless MetaCC::Platform.windows?
 
     env_key = "METACC_TEST_#{SecureRandom.hex(8)}"
     env_value = "METACC_TEST_VALUE_#{SecureRandom.hex(8)}"
@@ -133,6 +134,7 @@ class MsvcToolchainTest < Minitest::Test
         # short-circuits when DevEnvDir is defined)
         dev_env_dir = ENV.delete("DevEnvDir")
         MetaCC::MSVC.vcvarsall(devenv_path)
+
         assert_equal env_value, ENV.fetch(env_key, nil)
         refute ENV.key?("no_equals_sign")
       ensure
@@ -186,9 +188,7 @@ class ClangCLToolchainTest < Minitest::Test
   # Integration: full setup flow with vswhere and vcvarsall
   # ---------------------------------------------------------------------------
 
-  def test_integration_setup_with_vswhere_and_vcvarsall
-
-  end
+  def test_integration_setup_with_vswhere_and_vcvarsall; end
 
 end
 
@@ -494,19 +494,13 @@ class ToolchainDefaultExtensionTest < Minitest::Test
   end
 
   def test_gnu_shared_extension_on_current_os
-    host_os = RbConfig::CONFIG["host_os"]
-    expected =
-      if host_os.match?(/mswin|mingw|cygwin/) then ".dll"
-      elsif host_os.match?(/darwin/) then ".dylib"
-      else ".so"
-      end
+    expected = MetaCC::Platform.shared_library_ext
 
     assert_equal expected, gnu.default_extension(:shared)
   end
 
   def test_gnu_executable_extension_on_current_os
-    host_os = RbConfig::CONFIG["host_os"]
-    expected = host_os.match?(/mswin|mingw|cygwin/) ? ".exe" : ""
+    expected = MetaCC::Platform.executable_ext
 
     assert_equal expected, gnu.default_extension(:executable)
   end

@@ -128,7 +128,7 @@ module MetaCC
         "Enable sanitizer(s)",
         "  --sanitize        => address, undefined, leak",
         "  --sanitize=memory => memory",
-        "  --sanitize=thread => thread",
+        "  --sanitize=thread => thread"
       ) do |value|
         options[:flags] << SANITIZERS[value]
       end
@@ -142,10 +142,10 @@ module MetaCC
       parser.on("--lto", "Enable link time optimization") do
         options[:flags] << :lto
       end
-      parser.on("--omit-frame-pointer") do |value|
+      parser.on("--omit-frame-pointer") do
         options[:flags] << :omit_frame_pointer
       end
-      parser.on("--strict-aliasing") do |value|
+      parser.on("--strict-aliasing") do
         options[:flags] << :strict_aliasing
       end
 
@@ -155,13 +155,13 @@ module MetaCC
       parser.on("-m", "--arch=ARCH", "Target architecture") do |value|
         options[:flags] << TARGETS[value]
       end
-      parser.on("--pic", "Generate position independent code") do |value|
+      parser.on("--pic", "Generate position independent code") do
         options[:flags] << :pic
       end
-      parser.on("--no-rtti", "Disable runtime type information") do |value|
+      parser.on("--no-rtti", "Disable runtime type information") do
         options[:flags] << :no_rtti
       end
-      parser.on("--no-exceptions", "Disable exceptions (and unwinding info)") do |value|
+      parser.on("--no-exceptions", "Disable exceptions (and unwinding info)") do
         options[:flags] << :no_exceptions
       end
 
@@ -171,10 +171,10 @@ module MetaCC
       parser.on("--static", "Produce a static library") do
         options[:flags] << :static
       end
-      parser.on("--shared", "Produce a shared library") do |value|
+      parser.on("--shared", "Produce a shared library") do
         options[:flags] << :shared
       end
-      parser.on("--shared-compat", "Produce a shared library with full LD_PRELOAD compatability") do |value|
+      parser.on("--shared-compat", "Produce a shared library with full LD_PRELOAD compatability") do
         options[:flags] << :shared_compat
       end
       parser.on("-c", "Compile only (produce object files without linking)") do
@@ -228,12 +228,13 @@ module MetaCC
       end
 
       if !link && %i[static shared shared_compat].any? { |f| flags.include?(f) }
-        raise OptionParser::InvalidOption, "compile only mode (-c) cannot be used with --static, --shared, or --shared-compat"
+        raise OptionParser::InvalidOption,
+              "compile only mode (-c) cannot be used with --static, --shared, or --shared-compat"
       end
 
-      if flags.include?(:debug_info) && flags.include?(:strip)
-        raise OptionParser::InvalidOption, "--debug-info (-g) cannot be combined with --strip (-s)"
-      end
+      return unless flags.include?(:debug_info) && flags.include?(:strip)
+
+      raise OptionParser::InvalidOption, "--debug-info (-g) cannot be combined with --strip (-s)"
     end
 
     def invoke(input_paths, desired_output_path = nil, link: true, run: false, **options)
@@ -246,9 +247,9 @@ module MetaCC
         options.delete(:libs)
         result = @driver.compile(input_paths, **options)
       end
-      if options[:dry_run]
-        puts result.map { |cmd| cmd.join(" ") }
-      end
+      return unless options[:dry_run]
+
+      puts(result.map { |cmd| cmd.join(" ") })
     end
 
   end
